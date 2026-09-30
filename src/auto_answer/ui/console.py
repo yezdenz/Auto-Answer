@@ -13,6 +13,7 @@ from rich.text import Text
 from rich import box
 
 from ..ai.solver import AnswerResult
+from .formatting import selected_answer_lines
 
 # Reconfigure stdout/stderr to utf-8 if supported
 if hasattr(sys.stdout, "reconfigure"):
@@ -112,11 +113,12 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
     conf_color = "green" if pct >= 80 else "yellow" if pct >= 60 else "red"
 
     ans_content = Text()
-    ans_content.append("🎯 Best Answer: ", style="bold")
-    ans_content.append(
-        f"({result.correct_option_labels}) {result.correct_answer_text}\n\n",
-        style="bold green",
-    )
+    answer_lines = selected_answer_lines(result)
+    heading = "🎯 Best Answers:\n" if len(answer_lines) > 1 else "🎯 Best Answer:\n"
+    ans_content.append(heading, style="bold")
+    for answer_line in answer_lines:
+        ans_content.append(f"{answer_line}\n", style="bold green")
+    ans_content.append("\n")
     ans_content.append("💡 Explanation: ", style="bold")
     ans_content.append(f"{result.explanation}\n", style="white")
 
