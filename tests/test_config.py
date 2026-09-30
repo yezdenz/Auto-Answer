@@ -18,6 +18,8 @@ class TestConfig(unittest.TestCase):
         self.assertFalse(cfg.clicker.enabled)
         self.assertTrue(cfg.clicker.dry_run)
         self.assertGreaterEqual(cfg.clicker.min_confidence, 0.9)
+        self.assertEqual(cfg.scan_mode, "next_page")
+        self.assertEqual(cfg.reference_pdf_paths, [])
 
     def test_invalid_bounds_and_security_values_are_rejected(self):
         with self.assertRaises(ValidationError):
@@ -26,6 +28,8 @@ class TestConfig(unittest.TestCase):
             AppConfig(hud_opacity=2.0)
         with self.assertRaises(ValidationError):
             AppConfig(clicker={"min_confidence": -0.1})
+        with self.assertRaises(ValidationError):
+            AppConfig(scan_mode="unknown")
 
     def test_bounding_box_properties(self):
         bbox = BoundingBox(left=100, top=150, width=500, height=400)
