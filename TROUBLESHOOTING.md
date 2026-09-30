@@ -1,6 +1,6 @@
 # 🩺 Troubleshooting & FAQ Guide (`TROUBLESHOOTING.md`)
 
-This guide addresses common questions, emulator quirks, and display configurations when running **Auto Answer** on Windows.
+This guide addresses common questions, emulator quirks, and display configurations when running **Endependenz** on Windows.
 
 ---
 
@@ -13,7 +13,7 @@ The captured region looks shifted, zoomed in, or offset from where you snipped.
 Windows Display Scaling (e.g. 125%, 150%, or 200% on laptops or 4K monitors) causes non-DPI-aware applications to receive scaled virtual coordinates instead of physical pixel positions.
 
 ### Solution:
-Auto Answer includes built-in Per-Monitor DPI Awareness v2 (`ctypes.windll.shcore.SetProcessDpiAwareness(2)`).
+Endependenz includes built-in Per-Monitor DPI Awareness v2 (`ctypes.windll.shcore.SetProcessDpiAwareness(2)`).
 If you encounter any offset:
 1. Ensure both your primary monitor and emulator display scaling match.
 2. Re-run the visual snipping tool:
@@ -73,7 +73,7 @@ Some Android emulators use hardware-accelerated overlay modes (Vulkan or exclusi
 `UnicodeEncodeError: 'charmap' codec can't encode characters`.
 
 ### Solution:
-Auto Answer configures Python's standard output to UTF-8 automatically.
+Endependenz configures Python's standard output to UTF-8 automatically.
 If using an older PowerShell or Command Prompt console:
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
