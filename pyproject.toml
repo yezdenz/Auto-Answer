@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-answer"
+version = "0.2.0"
+description = "Privacy-conscious screen-region question assistant for Windows"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+  "google-genai>=2.25.0,<3.0.0",
+  "keyring>=25.0.0,<26.0.0",
+  "mss>=10.0.0,<11.0.0",
+  "pillow>=10.0.0,<13.0.0",
+  "pydantic>=2.0.0,<3.0.0",
+  "python-dotenv>=1.0.0,<2.0.0",
+  "rich>=13.0.0,<15.0.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
