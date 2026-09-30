@@ -9,37 +9,39 @@ import io
 import json
 import os
 import sys
-import warnings
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Literal, Optional
 from PIL import Image, ImageOps
-from pydantic import BaseModel, Field
-
-# Filter SDK deprecation warnings for cleaner console output
-warnings.filterwarnings("ignore", category=UserWarning)
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .prompts import SOLVER_SYSTEM_INSTRUCTION, SOLVER_USER_PROMPT
+from ..security import load_stored_api_key, store_api_key
 
 
 class QuestionOption(BaseModel):
-    index: int = Field(default=0, description="0-based physical position from top to bottom (0 for 1st choice, 1 for 2nd...)")
-    label: str = Field(default="A", description="Option label, e.g. A, B, C, D or 1, 2, 3, 4")
-    text: str = Field(default="", description="The full text of the option choice")
+    model_config = ConfigDict(extra="forbid")
+
+    index: int = Field(default=0, ge=0, le=99, description="0-based physical position from top to bottom (0 for 1st choice, 1 for 2nd...)")
+    label: str = Field(default="A", min_length=1, max_length=12, description="Option label, e.g. A, B, C, D or 1, 2, 3, 4")
+    text: str = Field(default="", max_length=4000, description="The full text of the option choice")
     is_correct: bool = Field(default=False, description="True if this option is correct, False otherwise")
-    reasoning: str = Field(default="", description="Why this option is correct or eliminated as a distractor")
+    reasoning: str = Field(default="", max_length=4000, description="Why this option is correct or eliminated as a distractor")
 
 
 class AnswerResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     is_valid_question: bool = Field(
         default=True,
         description="True if the image contains an academic or quiz question, False otherwise"
     )
-    question_type: str = Field(
+    question_type: Literal["multiple_choice", "multi_select", "true_false", "fill_in_blank", "short_answer"] = Field(
         default="multiple_choice",
         description="multiple_choice, multi_select, true_false, fill_in_blank, or short_answer"
     )
     question_text: str = Field(
         default="",
+        max_length=12000,
         description="The verbatim question statement extracted from the image"
     )
     is_negative_question: bool = Field(
@@ -52,32 +54,51 @@ class AnswerResult(BaseModel):
     )
     correct_option_indices: List[int] = Field(
         default_factory=list,
+        max_length=100,
         description="List of 0-based indices of the winning options, e.g. [0]"
     )
     correct_option_labels: str = Field(
         default="",
+        max_length=200,
         description="The letter or label of the correct choice(s) (e.g., 'A' or 'A, C')"
     )
     correct_answer_text: str = Field(
         default="",
+        max_length=8000,
         description="The full text of the correct answer"
     )
     click_instruction: str = Field(
         default="",
+        max_length=1000,
         description="Direct instruction on which physical UI element to click on screen"
     )
     confidence: float = Field(
         default=0.95,
+        ge=0.0,
+        le=1.0,
         description="Confidence level between 0.0 and 1.0"
     )
     explanation: str = Field(
         default="",
+        max_length=8000,
         description="Concise 1-2 sentence explanation justifying why this answer is correct"
     )
 
+    @model_validator(mode="after")
+    def validate_answer_indices(self) -> "AnswerResult":
+        if len(set(self.correct_option_indices)) != len(self.correct_option_indices):
+            raise ValueError("correct_option_indices contains duplicates")
+        if any(index < 0 for index in self.correct_option_indices):
+            raise ValueError("correct_option_indices cannot contain negative values")
+        if self.options and any(index >= len(self.options) for index in self.correct_option_indices):
+            raise ValueError("correct_option_indices points outside options")
+        if self.question_type != "multi_select" and len(self.correct_option_indices) > 1:
+            raise ValueError("multiple correct indices require question_type='multi_select'")
+        return self
+
 
 def prompt_for_api_key() -> Optional[str]:
-    """Prompts the user for their Gemini API key via GUI or terminal and saves it to .env."""
+    """Prompt for a Gemini API key and store it in the OS credential vault."""
     key = None
 
     try:
@@ -90,7 +111,8 @@ def prompt_for_api_key() -> Optional[str]:
         key = simpledialog.askstring(
             "Gemini API Key Required",
             "Enter your Google Gemini API Key:\n(Get one free at https://aistudio.google.com/app/apikey)",
-            parent=root
+            parent=root,
+            show="*",
         )
         root.destroy()
     except Exception:
@@ -102,17 +124,18 @@ def prompt_for_api_key() -> Optional[str]:
         print("Get your free API key at: https://aistudio.google.com/app/apikey")
         print("=" * 60)
         try:
-            key = input("Paste your Gemini API Key here (or press Enter to cancel): ").strip()
+            from getpass import getpass
+            key = getpass("Paste your Gemini API Key here (or press Enter to cancel): ").strip()
         except Exception:
             pass
 
     if key and key.strip():
         key = key.strip()
-        env_file = Path(".env")
-        with open(env_file, "a", encoding="utf-8") as f:
-            f.write(f"\nGEMINI_API_KEY={key}\n")
         os.environ["GEMINI_API_KEY"] = key
-        print(f"[✓] Saved GEMINI_API_KEY to {env_file.resolve()}")
+        if store_api_key(key):
+            print("[✓] Saved GEMINI_API_KEY in the operating system credential vault.")
+        else:
+            print("[!] Credential vault unavailable; the key is available only for this run.")
         return key
 
     return None
@@ -122,10 +145,16 @@ class GeminiQuestionSolver:
     """Solves quiz and exam questions using Gemini multimodal API."""
 
     def __init__(self, api_key: Optional[str] = None, model: str = "gemini-3.1-flash-lite", demo_mode: bool = False):
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        self.api_key = (
+            api_key
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
+            or load_stored_api_key()
+        )
         self.model = model
         self.demo_mode = demo_mode
         self._client = None
+        self._last_working_model: Optional[str] = None
 
     @property
     def client(self):
@@ -231,7 +260,7 @@ class GeminiQuestionSolver:
             temperature=0.0,
         )
 
-        candidate_models = [self.model]
+        candidate_models = [self._last_working_model or self.model]
         for fallback in ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]:
             if fallback not in candidate_models:
                 candidate_models.append(fallback)
@@ -247,8 +276,10 @@ class GeminiQuestionSolver:
 
                 if hasattr(response, "parsed") and response.parsed:
                     if isinstance(response.parsed, AnswerResult):
+                        self._last_working_model = model_name
                         return response.parsed
                     elif isinstance(response.parsed, dict):
+                        self._last_working_model = model_name
                         return AnswerResult(**response.parsed)
 
                 if response.text:
@@ -260,6 +291,7 @@ class GeminiQuestionSolver:
                     if cleaned_text.endswith("```"):
                         cleaned_text = cleaned_text[:-3]
                     data = json.loads(cleaned_text.strip())
+                    self._last_working_model = model_name
                     return AnswerResult(**data)
 
             except Exception as e:
