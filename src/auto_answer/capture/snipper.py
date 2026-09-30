@@ -7,6 +7,7 @@ Automatically saves the region to config.json.
 from __future__ import annotations
 import tkinter as tk
 from typing import Optional
+from PIL import ImageGrab, ImageTk
 from .screen import get_virtual_screen_geometry
 from ..config import BoundingBox, AppConfig
 
@@ -23,22 +24,50 @@ class SnippingOverlay:
 
         # Get virtual screen metrics
         vx, vy, vw, vh = get_virtual_screen_geometry()
+        self.virtual_left = vx
+        self.virtual_top = vy
         self.root.geometry(f"{vw}x{vh}+{vx}+{vy}")
         self.root.overrideredirect(True)
-        self.root.attributes("-alpha", 0.35)
         self.root.attributes("-topmost", True)
         self.root.config(cursor="cross")
 
-        self.canvas = tk.Canvas(self.root, cursor="cross", bg="#1a1a2e", highlightthickness=0)
+        # Show an unchanged snapshot of the desktop. It behaves like a transparent
+        # selection layer without dimming the display or risking click-through on
+        # Windows color-keyed transparent pixels.
+        transparent_key = "#010203"
+        self.root.configure(bg=transparent_key)
+        self._desktop_photo = None
+        try:
+            desktop = ImageGrab.grab(
+                bbox=(vx, vy, vx + vw, vy + vh), all_screens=True
+            )
+            self._desktop_photo = ImageTk.PhotoImage(desktop)
+        except Exception:
+            # A color-keyed fallback still avoids the old dark overlay.
+            try:
+                self.root.attributes("-transparentcolor", transparent_key)
+            except tk.TclError:
+                pass
+
+        self.canvas = tk.Canvas(
+            self.root, cursor="cross", bg=transparent_key, highlightthickness=0
+        )
         self.canvas.pack(fill="both", expand=True)
 
-        # Draw helpful banner
+        if self._desktop_photo is not None:
+            self.canvas.create_image(0, 0, image=self._desktop_photo, anchor="nw")
+
+        # A small readable banner remains visible; the rest of the overlay is clear.
+        self.canvas.create_rectangle(
+            max(10, vw // 2 - 300), 20, min(vw - 10, vw // 2 + 300), 76,
+            fill="#111827", outline="#60a5fa", width=1,
+        )
         self.canvas.create_text(
             vw // 2,
-            50,
-            text="🎯 Click and drag over the emulator question area (Press ESC to cancel)",
-            fill="#00ffcc",
-            font=("Segoe UI", 16, "bold"),
+            48,
+            text="Click and drag to choose the scan area  •  Esc cancels",
+            fill="#f8fafc",
+            font=("Segoe UI", 13, "bold"),
         )
 
         self.canvas.bind("<ButtonPress-1>", self.on_button_press)
@@ -53,7 +82,7 @@ class SnippingOverlay:
             self.canvas.delete(self.rect_id)
         self.rect_id = self.canvas.create_rectangle(
             self.start_x, self.start_y, self.start_x, self.start_y,
-            outline="#00ff88", width=3, fill="#00ff88", stipple="gray25"
+            outline="#60a5fa", width=3, dash=(8, 4)
         )
 
     def on_mouse_drag(self, event):
@@ -73,7 +102,12 @@ class SnippingOverlay:
 
         # Ignore tiny accidental clicks
         if width > 20 and height > 20:
-            self.selected_region = BoundingBox(left=left, top=top, width=width, height=height)
+            self.selected_region = BoundingBox(
+                left=left + self.virtual_left,
+                top=top + self.virtual_top,
+                width=width,
+                height=height,
+            )
 
         self.root.destroy()
 
