@@ -66,8 +66,9 @@ FILE_DESCRIPTIONS: Dict[str, str] = {
     "src/auto_answer/ai/prompts.py": "Train reasoning prompts on W3C SOAP elements, REST constraints, and OAuth flows",
 
     # Source: UI & Automation
-    "src/auto_answer/ui/hud.py": "Render transparent floating HUD overlay with live answer and confidence badges",
-    "src/auto_answer/ui/console.py": "Format Rich terminal output with highlighted answers and radio button guides",
+    "src/auto_answer/ui/formatting.py": "Extract shared presentation helpers for multi-option answer line formatting",
+    "src/auto_answer/ui/hud.py": "Adopt shared answer formatter and improve multi-choice display in floating HUD",
+    "src/auto_answer/ui/console.py": "Integrate shared answer formatting into Rich terminal presentation",
     "src/auto_answer/automation/clicker.py": "Simulate mouse clicks on calculated radio button coordinates with safety bounds",
 
     # Tests
@@ -78,6 +79,7 @@ FILE_DESCRIPTIONS: Dict[str, str] = {
     "tests/test_clicker.py": "Unit tests verifying clicker safety thresholds and dry-run coordinates",
     "tests/test_realtime.py": "Unit tests verifying real-time polling state transitions and hotkey hooks",
     "tests/test_security.py": "Unit tests verifying regex secret redaction and credential vault persistence",
+    "tests/test_answer_formatting.py": "Unit tests verifying multi-option answer extraction and line formatting",
 }
 
 
