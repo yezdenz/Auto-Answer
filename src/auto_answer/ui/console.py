@@ -34,7 +34,7 @@ def print_banner():
     """Prints the application banner in PowerShell/Terminal."""
     banner_text = Text()
     banner_text.append("╔═══════════════════════════════════════════════════╗\n", style="bold cyan")
-    banner_text.append("║           🎯 AUTO ANSWER - AI ASSISTANT           ║\n", style="bold green")
+    banner_text.append("║              ENDEPENDENZ AI ASSISTANT              ║\n", style="bold green")
     banner_text.append("║      Real-Time Screen Question & Exam Solver      ║\n", style="italic dim cyan")
     banner_text.append("╚═══════════════════════════════════════════════════╝", style="bold cyan")
     console.print(banner_text)
