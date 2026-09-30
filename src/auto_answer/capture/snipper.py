@@ -7,7 +7,6 @@ Automatically saves the region to config.json.
 from __future__ import annotations
 import tkinter as tk
 from typing import Optional
-from PIL import ImageGrab, ImageTk
 from .screen import get_virtual_screen_geometry
 from ..config import BoundingBox, AppConfig
 
@@ -29,33 +28,19 @@ class SnippingOverlay:
         self.root.geometry(f"{vw}x{vh}+{vx}+{vy}")
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
+        self.root.attributes("-alpha", 0.28)
         self.root.config(cursor="cross")
 
-        # Show an unchanged snapshot of the desktop. It behaves like a transparent
-        # selection layer without dimming the display or risking click-through on
-        # Windows color-keyed transparent pixels.
-        transparent_key = "#010203"
-        self.root.configure(bg=transparent_key)
-        self._desktop_photo = None
-        try:
-            desktop = ImageGrab.grab(
-                bbox=(vx, vy, vx + vw, vy + vh), all_screens=True
-            )
-            self._desktop_photo = ImageTk.PhotoImage(desktop)
-        except Exception:
-            # A color-keyed fallback still avoids the old dark overlay.
-            try:
-                self.root.attributes("-transparentcolor", transparent_key)
-            except tk.TclError:
-                pass
+        # A real translucent overlay is more reliable than displaying a captured
+        # desktop snapshot: some Windows/DWM and emulator combinations return a
+        # solid-black snapshot. Keep the selection itself outline-only.
+        overlay_color = "#17211a"
+        self.root.configure(bg=overlay_color)
 
         self.canvas = tk.Canvas(
-            self.root, cursor="cross", bg=transparent_key, highlightthickness=0
+            self.root, cursor="cross", bg=overlay_color, highlightthickness=0
         )
         self.canvas.pack(fill="both", expand=True)
-
-        if self._desktop_photo is not None:
-            self.canvas.create_image(0, 0, image=self._desktop_photo, anchor="nw")
 
         # A small readable banner remains visible; the rest of the overlay is clear.
         self.canvas.create_rectangle(
@@ -74,6 +59,17 @@ class SnippingOverlay:
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
         self.root.bind("<Escape>", self.on_cancel)
+        self.root.bind("<Button-3>", self.on_cancel)
+        self.root.after_idle(self._activate_overlay)
+
+    def _activate_overlay(self):
+        """Bring the selector forward and ensure it owns pointer/key input."""
+        self.root.lift()
+        self.root.focus_force()
+        try:
+            self.root.grab_set()
+        except tk.TclError:
+            pass
 
     def on_button_press(self, event):
         self.start_x = self.canvas.canvasx(event.x)
@@ -113,6 +109,10 @@ class SnippingOverlay:
 
     def on_cancel(self, event):
         self.selected_region = None
+        try:
+            self.root.grab_release()
+        except tk.TclError:
+            pass
         self.root.destroy()
 
 
