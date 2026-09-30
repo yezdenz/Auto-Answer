@@ -1,6 +1,6 @@
 # 📜 Changelog (`CHANGELOG.md`)
 
-All notable changes to **Auto Answer** will be documented in this file.
+All notable changes to **Endependenz** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Renamed the application to Endependenz and added a paused-by-default control console with Start/Stop, Scroll/Next Page modes, and bounded local PDF references.
+- Added scroll-aware visual matching so moving within the same question updates the local baseline without triggering another Gemini scan.
+- Removed the unsupported `additionalProperties` keyword from the Gemini response schema, fixing HTTP 400 `INVALID_ARGUMENT` failures.
 - Replaced the desktop-snapshot snipper, which could become a blocking black screen on some Windows/DWM setups, with a reliable translucent and cancellable overlay.
 - Restyled the HUD as a green-and-white pixel quest log and formatted single or multi-select answers as separate labeled lines.
 - Removed audible scan feedback and replaced the dim/green snipper with an outline-only, visually unchanged desktop overlay.
