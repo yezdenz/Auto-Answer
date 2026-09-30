@@ -1,0 +1,19 @@
+{
+  "scan_region": {
+    "left": 100,
+    "top": 100,
+    "width": 800,
+    "height": 600
+  },
+  "model": "gemini-2.5-flash",
+  "auto_mode_interval_sec": 2.0,
+  "save_debug_screenshots": true,
+  "debug_dir": "debug_output",
+  "hud_opacity": 0.92,
+  "hud_always_on_top": true,
+  "clicker": {
+    "enabled": false,
+    "dry_run": true,
+    "delay_sec": 1.0
+  }
+}
