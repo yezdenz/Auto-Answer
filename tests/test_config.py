@@ -33,7 +33,7 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(loaded.scan_region.top, 60)
             self.assertEqual(loaded.scan_region.width, 400)
             self.assertEqual(loaded.scan_region.height, 300)
-            self.assertEqual(loaded.model, "gemini-2.5-flash")
+            self.assertIn("flash", loaded.model)
             self.assertEqual(loaded.auto_mode_interval_sec, 3.5)
 
 

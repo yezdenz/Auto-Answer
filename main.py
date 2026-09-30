@@ -8,8 +8,11 @@ import sys
 import os
 import time
 import argparse
+import warnings
 from pathlib import Path
 from PIL import Image
+
+warnings.filterwarnings("ignore")
 
 # Ensure src is in python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))

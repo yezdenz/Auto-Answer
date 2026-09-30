@@ -9,10 +9,14 @@ import io
 import json
 import os
 import sys
+import warnings
 from pathlib import Path
 from typing import List, Optional
 from PIL import Image, ImageEnhance, ImageFilter
 from pydantic import BaseModel, Field
+
+# Filter SDK deprecation warnings for cleaner console output
+warnings.filterwarnings("ignore", category=UserWarning)
 
 from .prompts import SOLVER_SYSTEM_INSTRUCTION, SOLVER_USER_PROMPT
 
@@ -143,6 +147,7 @@ class GeminiQuestionSolver:
     def solve_image(self, image: Image.Image) -> AnswerResult:
         """
         Sends the PIL Image to Gemini Vision and returns structured AnswerResult.
+        Includes automatic fallback across Gemini 3.5 Flash-Lite and Gemini 3.8 Flash.
         """
         if self.demo_mode:
             import time
@@ -181,29 +186,49 @@ class GeminiQuestionSolver:
             temperature=0.1,
         )
 
-        response = self.client.models.generate_content(
-            model=self.model,
-            contents=[image_part, SOLVER_USER_PROMPT],
-            config=config,
-        )
+        # Candidate models with primary model first
+        candidate_models = [self.model]
+        for fallback in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-flash-lite"]:
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
 
-        # Parse response
-        if hasattr(response, "parsed") and response.parsed:
-            if isinstance(response.parsed, AnswerResult):
-                return response.parsed
-            elif isinstance(response.parsed, dict):
-                return AnswerResult(**response.parsed)
+        last_error = None
+        for model_name in candidate_models:
+            try:
+                response = self.client.models.generate_content(
+                    model=model_name,
+                    contents=[image_part, SOLVER_USER_PROMPT],
+                    config=config,
+                )
 
-        # Fallback to json parsing if response.text
-        if response.text:
-            cleaned_text = response.text.strip()
-            if cleaned_text.startswith("```json"):
-                cleaned_text = cleaned_text[7:]
-            if cleaned_text.startswith("```"):
-                cleaned_text = cleaned_text[3:]
-            if cleaned_text.endswith("```"):
-                cleaned_text = cleaned_text[:-3]
-            data = json.loads(cleaned_text.strip())
-            return AnswerResult(**data)
+                # Parse response
+                if hasattr(response, "parsed") and response.parsed:
+                    if isinstance(response.parsed, AnswerResult):
+                        return response.parsed
+                    elif isinstance(response.parsed, dict):
+                        return AnswerResult(**response.parsed)
+
+                # Fallback to json parsing if response.text
+                if response.text:
+                    cleaned_text = response.text.strip()
+                    if cleaned_text.startswith("```json"):
+                        cleaned_text = cleaned_text[7:]
+                    if cleaned_text.startswith("```"):
+                        cleaned_text = cleaned_text[3:]
+                    if cleaned_text.endswith("```"):
+                        cleaned_text = cleaned_text[:-3]
+                    data = json.loads(cleaned_text.strip())
+                    return AnswerResult(**data)
+
+            except Exception as e:
+                err_str = str(e)
+                # If temporary 503 or 404, try next candidate model
+                if "503" in err_str or "UNAVAILABLE" in err_str or "404" in err_str:
+                    last_error = e
+                    continue
+                raise e
+
+        if last_error:
+            raise last_error
 
         raise RuntimeError("No valid response received from Gemini API.")
