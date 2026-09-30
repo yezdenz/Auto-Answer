@@ -91,3 +91,4 @@ Running `.\run.ps1 hud` opens, but the window is behind the emulator.
 ### Solution:
 1. Check `config.json` and ensure `"hud_always_on_top": true` is set.
 2. The HUD spawns at coordinates `(50, 50)` by default. You can drag it by its top header bar anywhere on any of your monitors.
+
