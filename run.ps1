@@ -31,14 +31,16 @@ param (
 $pythonExe = $null
 
 if (Get-Command py -ErrorAction SilentlyContinue) {
-    $pythonExe = "py -3"
+    $pythonExe = "py"
+    $pythonPrefixArgs = @("-3")
 } elseif (Get-Command python -ErrorAction SilentlyContinue) {
     $pythonExe = "python"
+    $pythonPrefixArgs = @()
 } else {
     Write-Host "[!] Python not found on PATH. Please ensure Python is installed." -ForegroundColor Red
     exit 1
 }
 
-# Run main.py with passed arguments
-$cmd = "$pythonExe main.py $($AppArgs -join ' ')"
-Invoke-Expression $cmd
+# Pass arguments directly so PowerShell metacharacters remain literal arguments.
+& $pythonExe @pythonPrefixArgs "main.py" @AppArgs
+exit $LASTEXITCODE
