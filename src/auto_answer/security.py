@@ -9,7 +9,8 @@ _SECRET_PATTERNS = (
     re.compile(r"(?i)(api[_ -]?key\s*[=:]\s*)\S+"),
 )
 
-_CREDENTIAL_SERVICE = "Auto Answer"
+_CREDENTIAL_SERVICE = "Endependenz"
+_LEGACY_CREDENTIAL_SERVICE = "Auto Answer"
 _CREDENTIAL_ACCOUNT = "Gemini API Key"
 
 
@@ -28,7 +29,10 @@ def load_stored_api_key() -> str | None:
     """Read the API key from the operating system credential vault, if present."""
     try:
         import keyring
-        return keyring.get_password(_CREDENTIAL_SERVICE, _CREDENTIAL_ACCOUNT)
+        return (
+            keyring.get_password(_CREDENTIAL_SERVICE, _CREDENTIAL_ACCOUNT)
+            or keyring.get_password(_LEGACY_CREDENTIAL_SERVICE, _CREDENTIAL_ACCOUNT)
+        )
     except Exception:
         return None
 
