@@ -146,6 +146,15 @@ class FloatingHUD:
 
         self.root.after(0, _update)
 
+    def show_error(self, message: str):
+        """Display clear error notification in HUD."""
+        def _err():
+            self.status_lbl.config(text="❌ Solver Error", fg="#f38ba8")
+            self.choice_lbl.config(text="!", fg="#f38ba8")
+            self.answer_text_lbl.config(text=message[:60])
+            self.explanation_lbl.config(text=f"Details: {message}")
+        self.root.after(0, _err)
+
     def set_status(self, text: str, color: str = "#89b4fa"):
         """Update status label."""
         self.root.after(0, lambda: self.status_lbl.config(text=text, fg=color))

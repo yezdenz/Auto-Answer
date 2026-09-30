@@ -90,7 +90,7 @@ class RealtimeScanner:
         except Exception as e:
             console.print(f"[bold red]❌ Realtime Solver Error:[/bold red] {e}")
             if self.hud:
-                self.hud.set_status("Error solving", "#f38ba8")
+                self.hud.show_error(str(e))
             return None
         finally:
             self._is_solving = False

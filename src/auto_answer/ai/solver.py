@@ -8,8 +8,10 @@ from __future__ import annotations
 import io
 import json
 import os
+import sys
+from pathlib import Path
 from typing import List, Optional
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 from pydantic import BaseModel, Field
 
 from .prompts import SOLVER_SYSTEM_INSTRUCTION, SOLVER_USER_PROMPT
@@ -51,6 +53,51 @@ class AnswerResult(BaseModel):
     )
 
 
+def prompt_for_api_key() -> Optional[str]:
+    """Prompts the user for their Gemini API key via GUI or terminal and saves it to .env."""
+    key = None
+
+    # Try GUI prompt if running in interactive desktop
+    try:
+        import tkinter as tk
+        from tkinter import simpledialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        key = simpledialog.askstring(
+            "Gemini API Key Required",
+            "Enter your Google Gemini API Key:\n(Get one free at https://aistudio.google.com/app/apikey)",
+            parent=root
+        )
+        root.destroy()
+    except Exception:
+        pass
+
+    # Fallback to terminal input if GUI was cancelled or failed
+    if not key and sys.stdin and sys.stdin.isatty():
+        print("\n" + "=" * 60)
+        print("🔑 GEMINI API KEY REQUIRED")
+        print("Get your free API key at: https://aistudio.google.com/app/apikey")
+        print("=" * 60)
+        try:
+            key = input("Paste your Gemini API Key here (or press Enter to cancel): ").strip()
+        except Exception:
+            pass
+
+    if key and key.strip():
+        key = key.strip()
+        # Save to .env
+        env_file = Path(".env")
+        with open(env_file, "a", encoding="utf-8") as f:
+            f.write(f"\nGEMINI_API_KEY={key}\n")
+        os.environ["GEMINI_API_KEY"] = key
+        print(f"[✓] Saved GEMINI_API_KEY to {env_file.resolve()}")
+        return key
+
+    return None
+
+
 class GeminiQuestionSolver:
     """Solves quiz and exam questions using Gemini multimodal API."""
 
@@ -64,14 +111,34 @@ class GeminiQuestionSolver:
     def client(self):
         if self._client is None:
             if not self.api_key:
+                # Prompt user interactively
+                self.api_key = prompt_for_api_key()
+
+            if not self.api_key:
                 raise ValueError(
-                    "GEMINI_API_KEY is not set! Please set it in your .env file or environment variable.\n"
-                    "Get a key for free at https://aistudio.google.com/app/apikey\n"
-                    "(Tip: You can run with --demo to test the UI and sample answer without an API key!)"
+                    "GEMINI_API_KEY is not set!\n"
+                    "1. Get a free API key at: https://aistudio.google.com/app/apikey\n"
+                    "2. Add it to a .env file: GEMINI_API_KEY=your_key_here\n"
+                    "3. Or pass it when prompted."
                 )
+
             from google import genai
             self._client = genai.Client(api_key=self.api_key)
         return self._client
+
+    def preprocess_image(self, image: Image.Image) -> Image.Image:
+        """Optimizes image clarity and contrast for vision model reasoning."""
+        img = image.convert("RGB")
+        # Upscale small images for clearer text detection
+        w, h = img.size
+        if w < 600 or h < 400:
+            scale = max(600 / w, 400 / h)
+            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+
+        # Enhance contrast slightly to make text stand out against background
+        enhancer = ImageEnhance.Contrast(img)
+        img = enhancer.enhance(1.15)
+        return img
 
     def solve_image(self, image: Image.Image) -> AnswerResult:
         """
@@ -79,7 +146,7 @@ class GeminiQuestionSolver:
         """
         if self.demo_mode:
             import time
-            time.sleep(0.8) # simulate network latency
+            time.sleep(0.6)
             return AnswerResult(
                 is_valid_question=True,
                 question_text="What is the meaning of the term flow as it relates to the OAuth 2.0 authorization framework?",
@@ -92,14 +159,17 @@ class GeminiQuestionSolver:
                 correct_option_label="A",
                 correct_answer_text="It is a process for an API user to obtain an access token from the authorization server.",
                 confidence=0.99,
-                explanation="In OAuth 2.0, an authorization 'flow' (or grant type) specifies the exact process through which a client application secures an access token from the authorization server."
+                explanation="In OAuth 2.0 (RFC 6749), an authorization 'flow' specifies the exact process through which a client secures an access token from the authorization server."
             )
 
         from google.genai import types
 
+        # Preprocess frame
+        processed_img = self.preprocess_image(image)
+
         # Convert PIL image to PNG bytes
         buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
+        processed_img.save(buffer, format="PNG", optimize=True)
         png_bytes = buffer.getvalue()
 
         image_part = types.Part.from_bytes(data=png_bytes, mime_type="image/png")
