@@ -57,3 +57,4 @@ def find_emulator_window() -> Optional[Dict[str, any]]:
         if matches:
             return matches[0]
     return None
+
