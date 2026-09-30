@@ -1,5 +1,5 @@
 """
-Configuration manager for Auto Answer.
+Configuration manager for Endependenz.
 Handles loading and persisting settings from config.json and .env.
 """
 
@@ -8,7 +8,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from .security import load_stored_api_key
 
@@ -65,6 +65,8 @@ class AppConfig(BaseModel):
     poll_interval_sec: float = Field(default=0.25, ge=0.10, le=10.0)
     settle_delay_sec: float = Field(default=0.18, ge=0.0, le=5.0)
     change_threshold: float = Field(default=4.5, ge=0.1, le=255.0)
+    scan_mode: Literal["scroll", "next_page"] = "next_page"
+    reference_pdf_paths: list[str] = Field(default_factory=list, max_length=8)
     save_debug_screenshots: bool = False
     debug_dir: str = "debug_output"
     hud_opacity: float = Field(default=0.96, ge=0.35, le=1.0)
