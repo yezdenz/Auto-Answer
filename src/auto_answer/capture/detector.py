@@ -57,3 +57,4 @@ class ScreenChangeDetector:
     def reset(self) -> None:
         """Resets stored reference image."""
         self._last_thumbnail = None
+
