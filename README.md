@@ -10,7 +10,7 @@
 
 ## 🌟 Key Features
 
-- **✂ Clear Visual Snipping Tool**: Select a scan region without dimming or tinting the screen; only a blue outline is drawn.
+- **✂ Reliable Visual Snipping Tool**: Select a scan region through a light translucent overlay with an outline-only selection. Press Esc or right-click to cancel.
 - **🧠 Direct Multimodal Vision AI**: Uses Google Gemini (`gemini-2.5-flash` or `gemini-3.8-flash`) to analyze questions and options straight from pixels. No brittle OCR errors, handles complex wording, code snippets, and diagrams effortlessly.
 - **🖥️ Beautiful PowerShell Console**: Renders colorized questions, checkmarked options `[✓]`, highlighted answers, confidence scores, and concise explanations directly in your terminal.
 - **🪟 Floating HUD Overlay**: An always-on-top, semi-transparent HUD window you can place right next to your emulator for instant answers without switching windows.
