@@ -83,13 +83,13 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
             is_correct = opt.is_correct or (opt.index in result.correct_option_indices)
 
             if is_correct:
-                status_icon = "[bold green]✓[/bold green]"
-                label_txt = f"[bold green][{opt.label}][/bold green]"
-                content_txt = f"[bold green]{opt.text}[/bold green]"
+                status_icon = Text("✓", style="bold green")
+                label_txt = Text(f"[{opt.label}]", style="bold green")
+                content_txt = Text(opt.text, style="bold green")
             else:
-                status_icon = "[dim]○[/dim]"
-                label_txt = f"[dim][{opt.label}][/dim]"
-                content_txt = f"[dim]{opt.text}[/dim]"
+                status_icon = Text("○", style="dim")
+                label_txt = Text(f"[{opt.label}]", style="dim")
+                content_txt = Text(opt.text, style="dim")
 
             table.add_row(status_icon, label_txt, content_txt)
 
@@ -97,9 +97,11 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
 
     # Click Instruction Callout
     if result.click_instruction:
+        click_text = Text("👉 ", style="bold yellow")
+        click_text.append(result.click_instruction, style="bold yellow")
         console.print(
             Panel(
-                f"[bold yellow]👉 {result.click_instruction}[/bold yellow]",
+                click_text,
                 border_style="yellow",
                 box=box.ROUNDED,
             )
