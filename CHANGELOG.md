@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Restyled the HUD as a green-and-white pixel quest log and formatted single or multi-select answers as separate labeled lines.
 - Removed audible scan feedback and replaced the dim/green snipper with an outline-only, visually unchanged desktop overlay.
 - Reworked the HUD with responsive sizing, clearer scan/privacy state, and non-blocking scan workers.
 - Reduced live-scan latency with faster polling, shorter settling, persistent MSS capture sessions, sampled black-frame checks, and settled-frame reuse.
