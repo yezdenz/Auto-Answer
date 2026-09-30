@@ -6,11 +6,13 @@ DPI-aware, supports multi-monitor setups and emulator capture.
 
 from __future__ import annotations
 import sys
-import os
-from pathlib import Path
+import threading
 from typing import Tuple, Union
 from PIL import Image, ImageStat
 from ..config import BoundingBox
+
+_mss_local = threading.local()
+_desktop_local = threading.local()
 
 # Enable Per-Monitor DPI awareness on Windows to prevent resolution scaling blur / offset
 if sys.platform == "win32":
@@ -31,13 +33,23 @@ def ensure_default_desktop() -> bool:
     Required on Windows when running under sandbox, background shells, or isolated desktop threads.
     """
     if sys.platform == "win32":
+        if getattr(_desktop_local, "attached", False):
+            return True
         try:
             import ctypes
             user32 = ctypes.windll.user32
             # 0x01FF = MAXIMUM_ALLOWED for Desktop access rights
             hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
             if hdesk:
-                return bool(user32.SetThreadDesktop(hdesk))
+                attached = bool(user32.SetThreadDesktop(hdesk))
+                if attached:
+                    # Keep the desktop handle for the lifetime of this capture
+                    # thread; reopening it on every frame leaks handles.
+                    _desktop_local.attached = True
+                    _desktop_local.handle = hdesk
+                else:
+                    user32.CloseDesktop(hdesk)
+                return attached
         except Exception:
             pass
     return True
@@ -74,7 +86,10 @@ def get_virtual_screen_geometry() -> Tuple[int, int, int, int]:
 def _is_black_image(img: Image.Image) -> bool:
     """Detects if an image is completely black (failed DWM / GDI grab)."""
     try:
-        stat = ImageStat.Stat(img)
+        # Sampling a tiny thumbnail avoids scanning every pixel of a large frame.
+        sample = img.copy()
+        sample.thumbnail((32, 32), Image.Resampling.BILINEAR)
+        stat = ImageStat.Stat(sample)
         # If mean of all channels is near zero (< 0.5), it's an unrendered black buffer
         return all(m < 0.5 for m in stat.mean[:3])
     except Exception:
@@ -84,13 +99,25 @@ def _is_black_image(img: Image.Image) -> bool:
 def _capture_mss(x: int, y: int, w: int, h: int) -> Image.Image:
     """Captures region using high-speed MSS (C-level Windows graphics capture)."""
     import mss
-    with mss.MSS() as sct:
-        monitor = {"left": x, "top": y, "width": w, "height": h}
+    # Creating MSS on every 250 ms poll repeatedly allocates Windows capture
+    # handles. Cache one instance per capture thread instead.
+    sct = getattr(_mss_local, "instance", None)
+    if sct is None:
+        sct = mss.MSS()
+        _mss_local.instance = sct
+    monitor = {"left": x, "top": y, "width": w, "height": h}
+    try:
         sct_img = sct.grab(monitor)
-        img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
-        if _is_black_image(img):
-            raise RuntimeError("MSS captured solid black pixels (unrendered surface)")
-        return img
+    except Exception:
+        try:
+            sct.close()
+        finally:
+            _mss_local.instance = None
+        raise
+    img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+    if _is_black_image(img):
+        raise RuntimeError("MSS captured solid black pixels (unrendered surface)")
+    return img
 
 
 def _capture_gdi(x: int, y: int, w: int, h: int) -> Image.Image:
