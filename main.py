@@ -148,6 +148,35 @@ def cmd_hud(args, config: AppConfig):
     hud.run()
 
 
+def cmd_live(args, config: AppConfig):
+    """Launch autonomous real-time screen scanner."""
+    from auto_answer.realtime import RealtimeScanner
+    import threading
+
+    solver = GeminiQuestionSolver(api_key=config.gemini_api_key, model=config.model, demo_mode=getattr(args, "demo", False))
+    clicker = AutoClicker(config.clicker)
+
+    if getattr(args, "hud", False):
+        def on_snip():
+            launch_snipping_tool()
+            cfg = AppConfig.load()
+            config.scan_region = cfg.scan_region
+
+        hud = FloatingHUD(config, on_snip_requested=on_snip)
+        scanner = RealtimeScanner(config, solver, clicker, hud=hud)
+        hud.on_scan = lambda: scanner.trigger_scan(reason="HUD Button")
+        t = threading.Thread(
+            target=lambda: scanner.start(auto_detect_changes=not getattr(args, "no_auto_diff", False)),
+            daemon=True
+        )
+        t.start()
+        console.print("[bold green]✓ Real-Time Engine + Floating HUD started![/bold green]")
+        hud.run()
+    else:
+        scanner = RealtimeScanner(config, solver, clicker)
+        scanner.start(auto_detect_changes=not getattr(args, "no_auto_diff", False))
+
+
 def cmd_test_sample(args, config: AppConfig):
     """Test the AI solver using the provided sample question image."""
     sample_path = Path("assets/samples/sample_question.png")
@@ -205,6 +234,12 @@ def main():
     hud_p = subparsers.add_parser("hud", help="Launch floating HUD overlay beside your emulator")
     hud_p.add_argument("--demo", action="store_true", help="Run in demo mode without calling Gemini API")
 
+    # live / realtime
+    live_p = subparsers.add_parser("live", aliases=["realtime"], help="Autonomous real-time screen scanner with F8 hotkey and auto-detection")
+    live_p.add_argument("--hud", action="store_true", help="Launch floating HUD overlay alongside real-time scanner")
+    live_p.add_argument("--no-auto-diff", action="store_true", help="Disable automatic scene-change detection (hotkey only)")
+    live_p.add_argument("--demo", action="store_true", help="Run in demo mode without calling Gemini API")
+
     # test-sample
     sample_p = subparsers.add_parser("test-sample", help="Test the AI solver on the sample question image")
     sample_p.add_argument("--demo", action="store_true", help="Run in demo mode without calling Gemini API")
@@ -215,14 +250,16 @@ def main():
     args = parser.parse_args()
 
     if not args.command:
-        # Default behavior if run without args: interactive watch mode
-        cmd_watch(argparse.Namespace(auto=False), config)
+        # Default behavior if run without args: real-time live mode
+        cmd_live(argparse.Namespace(hud=False, no_auto_diff=False, demo=False), config)
     elif args.command == "snip":
         cmd_snip(args, config)
     elif args.command == "scan":
         cmd_scan(args, config)
     elif args.command == "watch":
         cmd_watch(args, config)
+    elif args.command in ("live", "realtime"):
+        cmd_live(args, config)
     elif args.command == "hud":
         cmd_hud(args, config)
     elif args.command == "test-sample":
