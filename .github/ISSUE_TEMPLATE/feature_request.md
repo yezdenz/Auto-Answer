@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea or new feature for Auto Answer
+about: Suggest an idea or new feature for Endependenz
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''
