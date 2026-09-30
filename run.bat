@@ -1,5 +1,5 @@
 @echo off
-REM Auto Answer Batch Launcher for Windows
+REM Endependenz Batch Launcher for Windows
 
 where py >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
