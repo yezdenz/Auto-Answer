@@ -44,12 +44,25 @@ class AutoClicker:
         if not self.config.enabled:
             return False
 
-        if not result.options:
+        if not result.is_valid_question or not result.options:
+            return False
+
+        if result.confidence < self.config.min_confidence:
+            print(
+                f"[AutoClicker] Blocked: confidence {result.confidence:.0%} is below "
+                f"the {self.config.min_confidence:.0%} safety threshold."
+            )
+            return False
+
+        if len(result.correct_option_indices) > 1 and not self.config.allow_multi_select:
+            print("[AutoClicker] Blocked: multi-select automation is not enabled.")
             return False
 
         if result.correct_option_indices:
             idx = result.correct_option_indices[0]
-            target_label = result.options[idx].label if idx < len(result.options) else result.correct_option_labels
+            if idx < 0 or idx >= len(result.options):
+                return False
+            target_label = result.options[idx].label
         else:
             labels = [opt.label.upper().strip() for opt in result.options]
             target_label = result.correct_option_labels.upper().strip()
@@ -67,6 +80,10 @@ class AutoClicker:
 
         target_x = region.left + int(region.width * 0.08)
         target_y = int(options_start_y + (idx + 0.5) * step)
+
+        if not (region.left <= target_x < region.right and region.top <= target_y < region.bottom):
+            print("[AutoClicker] Blocked: calculated click point is outside the scan region.")
+            return False
 
         if self.config.dry_run:
             print(f"[AutoClicker Dry-Run] Would click at ({target_x}, {target_y}) for option {target_label}")
