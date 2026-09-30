@@ -1,5 +1,5 @@
 """
-Auto Answer - Main CLI entry point.
+Endependenz - Main CLI entry point.
 Run directly from PowerShell or Command Prompt.
 """
 
@@ -126,6 +126,8 @@ def cmd_watch(args, config: AppConfig):
 
 def cmd_hud(args, config: AppConfig):
     """Launch the floating HUD overlay."""
+    _run_controlled_hud(args, config, auto_detect_changes=False)
+    return
     solver = GeminiQuestionSolver(api_key=config.gemini_api_key, model=config.model, demo_mode=getattr(args, "demo", False))
     clicker = AutoClicker(config.clicker)
 
@@ -151,6 +153,100 @@ def cmd_hud(args, config: AppConfig):
     hud.run()
 
 
+def _run_controlled_hud(args, config: AppConfig, auto_detect_changes: bool):
+    """Open Endependenz paused; Start explicitly creates the monitor."""
+    from auto_answer.realtime import RealtimeScanner
+    from auto_answer.references import PdfReferenceLibrary
+    import threading
+
+    solver = GeminiQuestionSolver(
+        api_key=config.gemini_api_key,
+        model=config.model,
+        demo_mode=getattr(args, "demo", False),
+    )
+    clicker = AutoClicker(config.clicker)
+    library = PdfReferenceLibrary()
+    state = {"scanner": None, "thread": None}
+    hud = None
+
+    def stop_monitor():
+        scanner = state["scanner"]
+        if scanner:
+            scanner.stop()
+
+    def start_monitor():
+        active_thread = state["thread"]
+        if active_thread and active_thread.is_alive():
+            return
+        scanner = RealtimeScanner(config, solver, clicker, hud=hud)
+        state["scanner"] = scanner
+
+        def run_scanner():
+            try:
+                scanner.start(auto_detect_changes=auto_detect_changes)
+            finally:
+                if hud:
+                    hud.set_running(False)
+
+        thread = threading.Thread(
+            target=run_scanner, name="endependenz-monitor", daemon=True
+        )
+        state["thread"] = thread
+        thread.start()
+
+    def manual_scan():
+        scanner = state["scanner"]
+        if scanner and scanner.is_running:
+            scanner.trigger_scan(reason="HUD Button")
+
+    def set_mode(mode: str):
+        config.scan_mode = mode
+        scanner = state["scanner"]
+        if scanner:
+            scanner.set_scan_mode(mode)
+        config.save()
+
+    def load_pdfs(paths):
+        result = library.load(paths)
+        solver.set_reference_context(result.context)
+        config.reference_pdf_paths = list(result.paths)
+        config.save()
+        return result
+
+    def choose_region():
+        stop_monitor()
+        if hud:
+            hud.set_running(False)
+        launch_snipping_tool()
+        config.scan_region = AppConfig.load().scan_region
+
+    hud = FloatingHUD(
+        config,
+        on_scan_requested=manual_scan,
+        on_snip_requested=choose_region,
+        on_start_requested=start_monitor,
+        on_stop_requested=stop_monitor,
+        on_mode_changed=set_mode,
+        on_pdf_requested=load_pdfs,
+    )
+
+    if config.reference_pdf_paths:
+        def restore_references():
+            try:
+                hud.update_reference(load_pdfs(tuple(config.reference_pdf_paths)))
+            except Exception as exc:
+                hud.show_error(f"Saved PDF reference could not be loaded: {exc}")
+
+        threading.Thread(
+            target=restore_references,
+            name="endependenz-reference-restore",
+            daemon=True,
+        ).start()
+
+    console.print("[bold green]Endependenz ready (paused). Press Start to monitor.[/bold green]")
+    hud.run()
+
+
 def cmd_live(args, config: AppConfig):
     """Launch autonomous real-time screen scanner."""
     from auto_answer.realtime import RealtimeScanner
@@ -160,6 +256,12 @@ def cmd_live(args, config: AppConfig):
     clicker = AutoClicker(config.clicker)
 
     if getattr(args, "hud", False):
+        _run_controlled_hud(
+            args,
+            config,
+            auto_detect_changes=not getattr(args, "no_auto_diff", False),
+        )
+        return
         def on_snip():
             launch_snipping_tool()
             cfg = AppConfig.load()
@@ -213,7 +315,7 @@ def main():
     config = AppConfig.load()
 
     parser = argparse.ArgumentParser(
-        description="Auto Answer - Screen Scanner & AI Question Solver for Emulators and Quizzes",
+        description="Endependenz - Screen Scanner & AI Question Solver for Emulators and Quizzes",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
