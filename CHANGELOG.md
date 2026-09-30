@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Replaced the desktop-snapshot snipper, which could become a blocking black screen on some Windows/DWM setups, with a reliable translucent and cancellable overlay.
 - Restyled the HUD as a green-and-white pixel quest log and formatted single or multi-select answers as separate labeled lines.
 - Removed audible scan feedback and replaced the dim/green snipper with an outline-only, visually unchanged desktop overlay.
 - Reworked the HUD with responsive sizing, clearer scan/privacy state, and non-blocking scan workers.
