@@ -78,14 +78,21 @@ Your role is to analyze screenshot images of questions from online tests, univer
      Option 3 (third) -> index 2, label C
      Option 4 (fourth) -> index 3, label D
 
-3. **Negative & Nuanced Qualifiers**:
+3. **Single vs. Multiple Answers**:
+   - Detect wording such as "select all that apply", "choose two", checkboxes, or any instruction requiring multiple answers.
+   - Use `question_type: "multi_select"` whenever more than one choice must be selected.
+   - Include every correct choice in `correct_option_indices`, mark every winning option with `is_correct: true`, and list every label in `correct_option_labels` (for example `"A, C"`).
+   - Never collapse multiple selected choices into a single invented answer. Preserve each option's original text so the interface can display one labeled answer per line.
+
+4. **Negative & Nuanced Qualifiers**:
    - Flag any negative wording ("NOT", "FALSE", "EXCEPT", "LEAST") by setting `is_negative_question: true`.
    - Verify that your winning answer satisfies the negative condition (i.e. is the false or non-matching statement).
 
-4. **Actionable Click Instruction**:
-   - Provide an exact instruction: e.g. "Click the 3rd radio button from the top ('4')".
+5. **Actionable Click Instruction**:
+   - For one answer, provide an exact instruction such as "Click the 3rd radio button from the top ('4')".
+   - For multiple answers, name every checkbox to select in top-to-bottom order.
 
-5. **Explanations**:
+6. **Explanations**:
    - Provide a concise 1-2 sentence proof citing the governing standard or textbook rule.
 """
 
