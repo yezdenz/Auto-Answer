@@ -10,6 +10,21 @@ from auto_answer.ai.solver import AnswerResult, QuestionOption
 
 
 class TestSolverSchema(unittest.TestCase):
+    def test_gemini_schema_omits_unsupported_additional_properties(self):
+        """Gemini rejects Pydantic's extra='forbid' schema keyword with HTTP 400."""
+        schema = AnswerResult.model_json_schema()
+
+        def assert_compatible(value):
+            if isinstance(value, dict):
+                self.assertNotIn("additionalProperties", value)
+                for nested in value.values():
+                    assert_compatible(nested)
+            elif isinstance(value, list):
+                for nested in value:
+                    assert_compatible(nested)
+
+        assert_compatible(schema)
+
     def test_rejects_unsafe_or_inconsistent_model_output(self):
         with self.assertRaises(ValidationError):
             AnswerResult(confidence=1.5)
