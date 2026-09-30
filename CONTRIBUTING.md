@@ -26,3 +26,4 @@ Thank you for your interest in improving Auto Answer!
 
 1. Create a descriptive branch name (e.g. `feat/ocr-fallback` or `fix/dpi-scaling`).
 2. Include a summary of changes and test steps in your PR description.
+
