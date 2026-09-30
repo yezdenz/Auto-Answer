@@ -1,15 +1,17 @@
 {
   "scan_region": {
-    "left": 990,
-    "top": 593,
-    "width": 236,
-    "height": 185
+    "left": 629,
+    "top": 172,
+    "width": 1268,
+    "height": 819
   },
   "model": "gemini-3.5-flash-lite",
   "auto_mode_interval_sec": 2.0,
   "poll_interval_sec": 0.25,
   "settle_delay_sec": 0.18,
   "change_threshold": 4.5,
+  "scan_mode": "next_page",
+  "reference_pdf_paths": [],
   "save_debug_screenshots": false,
   "debug_dir": "debug_output",
   "hud_opacity": 0.96,
