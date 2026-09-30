@@ -5,9 +5,9 @@ listens for global hotkeys, and delivers instantaneous answers.
 """
 
 from __future__ import annotations
-import sys
 import time
 import threading
+from pathlib import Path
 from typing import Optional, Callable
 from PIL import Image
 
@@ -31,61 +31,48 @@ class RealtimeScanner:
         clicker: AutoClicker,
         hud: Optional[FloatingHUD] = None,
         on_solved_callback: Optional[Callable[[AnswerResult], None]] = None,
-        poll_interval: float = 0.4,
-        change_threshold: float = 4.5,
+        poll_interval: Optional[float] = None,
+        change_threshold: Optional[float] = None,
     ):
         self.config = config
         self.solver = solver
         self.clicker = clicker
         self.hud = hud
         self.on_solved = on_solved_callback
-        self.poll_interval = poll_interval
-        self.detector = ScreenChangeDetector(threshold=change_threshold)
+        self.poll_interval = poll_interval if poll_interval is not None else config.poll_interval_sec
+        threshold = change_threshold if change_threshold is not None else config.change_threshold
+        self.detector = ScreenChangeDetector(threshold=threshold)
         self.is_running = False
-        self._is_solving = False
+        self._solve_lock = threading.Lock()
         self._hotkey_listener: Optional[GlobalHotkeyListener] = None
 
-    def trigger_scan(self, reason: str = "Manual Trigger") -> Optional[AnswerResult]:
+    @property
+    def is_solving(self) -> bool:
+        return self._solve_lock.locked()
+
+    def trigger_scan(
+        self,
+        reason: str = "Manual Trigger",
+        captured_image: Optional[Image.Image] = None,
+    ) -> Optional[AnswerResult]:
         """Performs an immediate capture, AI solve, and UI update."""
-        if self._is_solving:
+        if not self._solve_lock.acquire(blocking=False):
             return None
 
-        self._is_solving = True
         try:
             start_t = time.time()
             if self.hud:
                 self.hud.set_analyzing()
-                try:
-                    self.hud.root.withdraw()
-                    time.sleep(0.04)
-                except Exception:
-                    pass
 
             region = self.config.scan_region
-            img = capture_screen_region(region)
+            img = captured_image if captured_image is not None else capture_screen_region(region)
 
-            try:
+            if self.config.save_debug_screenshots:
                 dbg_dir = Path(self.config.debug_dir)
                 dbg_dir.mkdir(parents=True, exist_ok=True)
                 img.save(dbg_dir / "latest_capture.png")
-            except Exception:
-                pass
-
-            if self.hud:
-                try:
-                    self.hud.root.deiconify()
-                except Exception:
-                    pass
 
             self.detector.update_reference(img)
-
-            # Optional subtle audio feedback
-            if sys.platform == "win32":
-                try:
-                    import winsound
-                    winsound.Beep(880, 50)
-                except Exception:
-                    pass
 
             result = self.solver.solve_image(img)
             elapsed = time.time() - start_t
@@ -107,12 +94,14 @@ class RealtimeScanner:
 
             return result
         except Exception as e:
-            console.print(f"[bold red]❌ Realtime Solver Error:[/bold red] {e}")
+            from .security import redact_secrets
+            safe_error = redact_secrets(e)
+            console.print(f"[bold red]❌ Realtime Solver Error:[/bold red] {safe_error}")
             if self.hud:
-                self.hud.show_error(str(e))
+                self.hud.show_error(safe_error)
             return None
         finally:
-            self._is_solving = False
+            self._solve_lock.release()
 
     def start(self, auto_detect_changes: bool = True):
         """Starts real-time monitoring loop."""
@@ -143,13 +132,13 @@ class RealtimeScanner:
         self.detector.update_reference(initial_img)
 
         # Trigger immediate first scan
-        self.trigger_scan(reason="Initial Screen Read")
+        self.trigger_scan(reason="Initial Screen Read", captured_image=initial_img)
 
         try:
             while self.is_running:
                 time.sleep(self.poll_interval)
 
-                if self._is_solving:
+                if self.is_solving:
                     continue
 
                 if auto_detect_changes:
@@ -158,10 +147,13 @@ class RealtimeScanner:
 
                     # If significant change detected, wait brief moment for animation to settle
                     if diff >= self.detector.threshold:
-                        time.sleep(0.3)
+                        time.sleep(self.config.settle_delay_sec)
                         # Re-verify after settling
                         settled_img = capture_screen_region(self.config.scan_region)
-                        self.trigger_scan(reason=f"Auto Scene Change (diff: {diff:.1f})")
+                        self.trigger_scan(
+                            reason=f"Auto Scene Change (diff: {diff:.1f})",
+                            captured_image=settled_img,
+                        )
 
         except KeyboardInterrupt:
             console.print("\n[yellow]Stopping real-time monitor...[/yellow]")
