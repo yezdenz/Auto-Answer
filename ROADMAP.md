@@ -1,6 +1,6 @@
 # 🗺️ Product Roadmap (`ROADMAP.md`)
 
-This roadmap outlines planned enhancements and milestones for **Auto Answer**.
+This roadmap outlines planned enhancements and milestones for **Endependenz**.
 
 ---
 
