@@ -54,10 +54,22 @@ class RealtimeScanner:
         try:
             start_t = time.time()
             if self.hud:
-                self.hud.set_status("🔍 Analyzing question...", "#f9e2af")
+                self.hud.set_analyzing()
+                try:
+                    self.hud.root.withdraw()
+                    time.sleep(0.04)
+                except Exception:
+                    pass
 
             region = self.config.scan_region
             img = capture_screen_region(region)
+
+            if self.hud:
+                try:
+                    self.hud.root.deiconify()
+                except Exception:
+                    pass
+
             self.detector.update_reference(img)
 
             # Optional subtle audio feedback

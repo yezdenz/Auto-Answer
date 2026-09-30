@@ -152,6 +152,15 @@ class FloatingHUD:
 
         self.root.after(0, _update)
 
+    def set_analyzing(self):
+        """Resets HUD into active scanning state so stale answers from previous questions are never shown."""
+        def _act():
+            self.status_lbl.config(text="⏳ Analyzing new question...", fg="#f9e2af")
+            self.choice_lbl.config(text="⏳", fg="#f9e2af")
+            self.answer_text_lbl.config(text="Scanning screen & solving...")
+            self.explanation_lbl.config(text="")
+        self.root.after(0, _act)
+
     def show_error(self, message: str):
         """Display clear error notification in HUD."""
         def _err():

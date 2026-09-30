@@ -1,9 +1,9 @@
 {
   "scan_region": {
-    "left": 641,
-    "top": 339,
-    "width": 1087,
-    "height": 568
+    "left": 311,
+    "top": 447,
+    "width": 586,
+    "height": 305
   },
   "model": "gemini-3.5-flash-lite",
   "auto_mode_interval_sec": 2.0,

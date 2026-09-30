@@ -146,25 +146,21 @@ class GeminiQuestionSolver:
         return self._client
 
     def preprocess_image(self, image: Image.Image) -> Image.Image:
-        """Optimizes image clarity, contrast, and sharpness for vision reasoning."""
+        """Optimizes image clarity, contrast, and compression for sub-second upload."""
         img = image.convert("RGB")
         w, h = img.size
 
-        # Scale up small captures so text and radio buttons are sharp
-        if w < 1200:
-            scale = 1200 / w
-            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
+        # Ideal width for mobile/canvas quiz frames: 550 - 700px
+        if w > 750:
+            scale = 750 / w
+            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
+        elif w < 400:
+            scale = 500 / w
+            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
 
         # Autocontrast to normalize text vs background
         try:
             img = ImageOps.autocontrast(img, cutoff=1)
-        except Exception:
-            pass
-
-        # Enhance sharpness
-        try:
-            enhancer = ImageEnhance.Sharpness(img)
-            img = enhancer.enhance(1.25)
         except Exception:
             pass
 
@@ -221,12 +217,12 @@ class GeminiQuestionSolver:
         # Preprocess frame
         processed_img = self.preprocess_image(image)
 
-        # Convert PIL image to PNG bytes
+        # Convert PIL image to compact JPEG bytes (slashes upload time by 80%)
         buffer = io.BytesIO()
-        processed_img.save(buffer, format="PNG", optimize=True)
-        png_bytes = buffer.getvalue()
+        processed_img.save(buffer, format="JPEG", quality=80)
+        jpeg_bytes = buffer.getvalue()
 
-        image_part = types.Part.from_bytes(data=png_bytes, mime_type="image/png")
+        image_part = types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg")
 
         config = types.GenerateContentConfig(
             system_instruction=SOLVER_SYSTEM_INSTRUCTION,
@@ -236,7 +232,7 @@ class GeminiQuestionSolver:
         )
 
         candidate_models = [self.model]
-        for fallback in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-flash-lite"]:
+        for fallback in ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"]:
             if fallback not in candidate_models:
                 candidate_models.append(fallback)
 
