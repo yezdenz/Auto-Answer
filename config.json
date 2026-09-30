@@ -1,11 +1,11 @@
 {
   "scan_region": {
-    "left": 676,
-    "top": 623,
-    "width": 1025,
-    "height": 440
+    "left": 641,
+    "top": 339,
+    "width": 1087,
+    "height": 568
   },
-  "model": "gemini-2.5-flash",
+  "model": "gemini-3.5-flash-lite",
   "auto_mode_interval_sec": 2.0,
   "save_debug_screenshots": true,
   "debug_dir": "debug_output",

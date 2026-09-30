@@ -56,12 +56,17 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
         return
 
     # Question Header
-    q_text = Text(result.question_text, style="bold white")
+    q_content = Text()
+    if result.is_negative_question:
+        q_content.append("⚠️ NEGATIVE QUESTION (Select the FALSE / NOT choice)\n\n", style="bold red")
+
+    q_content.append(result.question_text, style="bold white")
+
     time_badge = f" [dim]({elapsed_sec:.2f}s)[/dim]" if elapsed_sec is not None else ""
     console.print(
         Panel(
-            q_text,
-            title=f"[bold cyan]📝 Detected Question{time_badge}[/bold cyan]",
+            q_content,
+            title=f"[bold cyan]📝 {result.question_type.upper().replace('_', ' ')}{time_badge}[/bold cyan]",
             border_style="cyan",
             box=box.ROUNDED,
         )
@@ -75,10 +80,7 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
         table.add_column("Text")
 
         for opt in result.options:
-            is_correct = (
-                opt.label.upper().strip() == result.correct_option_label.upper().strip()
-                or (opt.text and opt.text.strip().lower() == result.correct_answer_text.strip().lower())
-            )
+            is_correct = opt.is_correct or (opt.index in result.correct_option_indices)
 
             if is_correct:
                 status_icon = "[bold green]✓[/bold green]"
@@ -93,6 +95,16 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
 
         console.print(table)
 
+    # Click Instruction Callout
+    if result.click_instruction:
+        console.print(
+            Panel(
+                f"[bold yellow]👉 {result.click_instruction}[/bold yellow]",
+                border_style="yellow",
+                box=box.ROUNDED,
+            )
+        )
+
     # Correct Answer & Explanation Box
     pct = int(result.confidence * 100)
     conf_color = "green" if pct >= 80 else "yellow" if pct >= 60 else "red"
@@ -100,7 +112,7 @@ def display_answer_terminal(result: AnswerResult, elapsed_sec: Optional[float] =
     ans_content = Text()
     ans_content.append("🎯 Best Answer: ", style="bold")
     ans_content.append(
-        f"({result.correct_option_label}) {result.correct_answer_text}\n\n",
+        f"({result.correct_option_labels}) {result.correct_answer_text}\n\n",
         style="bold green",
     )
     ans_content.append("💡 Explanation: ", style="bold")

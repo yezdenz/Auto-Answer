@@ -44,18 +44,20 @@ class AutoClicker:
         if not self.config.enabled:
             return False
 
-        if not result.options or not result.correct_option_label:
+        if not result.options:
             return False
 
-        # Find the index of the chosen option
-        labels = [opt.label.upper().strip() for opt in result.options]
-        target_label = result.correct_option_label.upper().strip()
+        if result.correct_option_indices:
+            idx = result.correct_option_indices[0]
+            target_label = result.options[idx].label if idx < len(result.options) else result.correct_option_labels
+        else:
+            labels = [opt.label.upper().strip() for opt in result.options]
+            target_label = result.correct_option_labels.upper().strip()
+            if target_label not in labels:
+                return False
+            idx = labels.index(target_label)
 
-        if target_label not in labels:
-            return False
-
-        idx = labels.index(target_label)
-        total = len(labels)
+        total = len(result.options)
 
         # Estimate the Y coordinate based on options distribution in the lower ~60% of the box
         # Radio button is typically near the left edge (~10% into width)

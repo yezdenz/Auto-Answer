@@ -136,12 +136,18 @@ class FloatingHUD:
                 return
 
             pct = int(result.confidence * 100)
+            status_text = f"✓ Solved ({pct}% conf)"
+            if result.is_negative_question:
+                status_text += " [NEGATIVE QUESTION]"
+
             self.status_lbl.config(
-                text=f"✓ Question Solved ({pct}% confidence)",
+                text=status_text,
                 fg="#a6e3a1" if pct >= 80 else "#f9e2af"
             )
-            self.choice_lbl.config(text=result.correct_option_label or "✓", fg="#a6e3a1")
-            self.answer_text_lbl.config(text=result.correct_answer_text or "Answer found")
+            lbl = result.correct_option_labels or "✓"
+            self.choice_lbl.config(text=lbl, fg="#a6e3a1")
+            display_main = result.click_instruction if result.click_instruction else result.correct_answer_text
+            self.answer_text_lbl.config(text=display_main)
             self.explanation_lbl.config(text=f"💡 {result.explanation}" if result.explanation else "")
 
         self.root.after(0, _update)
