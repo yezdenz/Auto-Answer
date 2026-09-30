@@ -1,4 +1,4 @@
-# 🎯 Auto Answer
+# Endependenz
 
 > An automated screen scanner and AI question solver designed for Android emulators (LDPlayer, BlueStacks, Nox, MuMu) and desktop quizzes. Powered by Google Gemini multimodal vision.
 
@@ -18,6 +18,9 @@
 - **⚡ Zero Extra Drivers or C++ Compilers**: High-speed Windows GDI BitBlt screen capture implemented natively with ctypes and Pillow.
 - **🛡️ Guarded Auto-Clicker**: Disabled by default, dry-run by default, and blocked for low-confidence, invalid, out-of-range, or multi-select results unless explicitly allowed.
 - **🔒 Privacy-Safe Defaults**: No scan sound, no screenshot retention, and no capture/upload until the user explicitly requests a scan.
+- **⏯ Explicit Start/Stop**: The HUD always opens paused and cannot scan until Start is pressed.
+- **↕ Two Scan Modes**: Scroll mode reacts to moving long-form questions; Next Page mode ignores ordinary scrolling within the same question.
+- **📄 PDF References**: Add up to eight local PDFs as optional factual study material for Gemini answers.
 
 ---
 
@@ -87,7 +90,7 @@ Launch the interactive snipping tool and drag a rectangle over the question area
 ```
 *Your selected coordinates will be automatically saved to `config.json`.*
 
-### Step 2: Run Auto Answer
+### Step 2: Run Endependenz
 
 You can run in whichever mode best suits your workflow:
 
@@ -107,7 +110,9 @@ Launches a sleek floating window that stays on top next to your emulator:
 .\run.ps1 hud
 # Or: py main.py hud
 ```
-Click **"⚡ Scan Now"** whenever a question appears.
+Click **[ SCAN ]** whenever a question appears.
+
+The HUD opens paused. Select **Scroll** or **Next Page**, optionally add PDF references, and then press **Start**. Press **Stop** to disable monitoring and the F8 hotkey without closing Endependenz.
 
 #### Option C: Automatic Timer Mode
 Continuously monitors the region and solves every few seconds:
@@ -141,6 +146,8 @@ The `config.json` file allows fine-tuning application behavior:
   "poll_interval_sec": 0.25,
   "settle_delay_sec": 0.18,
   "change_threshold": 4.5,
+  "scan_mode": "next_page",
+  "reference_pdf_paths": [],
   "save_debug_screenshots": false,
   "debug_dir": "debug_output",
   "hud_opacity": 0.96,
@@ -164,6 +171,8 @@ The `config.json` file allows fine-tuning application behavior:
 | `poll_interval_sec` | Real-time change-detection interval; lower values react faster but use more CPU. |
 | `settle_delay_sec` | Brief pause for screen animations before a changed frame is analyzed. |
 | `change_threshold` | Sensitivity of real-time visual change detection. |
+| `scan_mode` | `scroll` refreshes on viewport movement; `next_page` suppresses vertical-scroll duplicates. |
+| `reference_pdf_paths` | Local PDF references selected in the HUD; limited and text-extracted at startup. |
 | `save_debug_screenshots` | Opt-in local screenshot retention for troubleshooting. Keep off for privacy. |
 | `hud_opacity` | Window opacity of the floating HUD (0.1 to 1.0). |
 | `hud_always_on_top` | Keeps the HUD window floating above all other windows. |
