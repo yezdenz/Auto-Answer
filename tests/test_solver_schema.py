@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 import sys
+from pydantic import ValidationError
 
 # Ensure src in path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -9,6 +10,22 @@ from auto_answer.ai.solver import AnswerResult, QuestionOption
 
 
 class TestSolverSchema(unittest.TestCase):
+    def test_rejects_unsafe_or_inconsistent_model_output(self):
+        with self.assertRaises(ValidationError):
+            AnswerResult(confidence=1.5)
+        with self.assertRaises(ValidationError):
+            AnswerResult(
+                question_type="multiple_choice",
+                options=[QuestionOption(index=0, label="A", text="one")],
+                correct_option_indices=[-1],
+            )
+        with self.assertRaises(ValidationError):
+            AnswerResult(
+                question_type="multiple_choice",
+                options=[QuestionOption(index=0, label="A", text="one")],
+                correct_option_indices=[1],
+            )
+
     def test_answer_result_model(self):
         result = AnswerResult(
             is_valid_question=True,
