@@ -13,6 +13,16 @@ from auto_answer.realtime import RealtimeScanner
 
 
 class TestRealtimeScanner(unittest.TestCase):
+    def test_scan_mode_switch_resets_detector(self):
+        config = AppConfig()
+        scanner = RealtimeScanner(config, Mock(), Mock())
+        scanner.detector.update_reference(Image.new("RGB", (10, 10), "white"))
+
+        scanner.set_scan_mode("scroll")
+
+        self.assertEqual(config.scan_mode, "scroll")
+        self.assertIsNone(scanner.detector._last_thumbnail)
+
     def test_precaptured_frame_is_reused_without_capture_or_sound(self):
         config = AppConfig(save_debug_screenshots=False)
         solver = Mock()
