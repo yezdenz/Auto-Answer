@@ -103,9 +103,16 @@ class RealtimeScanner:
         finally:
             self._solve_lock.release()
 
+    def set_scan_mode(self, mode: str) -> None:
+        if mode not in {"scroll", "next_page"}:
+            raise ValueError(f"Unsupported scan mode: {mode}")
+        self.config.scan_mode = mode
+        self.detector.reset()
+
     def start(self, auto_detect_changes: bool = True):
         """Starts real-time monitoring loop."""
         self.is_running = True
+        self.detector.reset()
 
         # Initialize global hotkey listener (F8)
         self._hotkey_listener = GlobalHotkeyListener(
@@ -143,10 +150,27 @@ class RealtimeScanner:
 
                 if auto_detect_changes:
                     current_img = capture_screen_region(self.config.scan_region)
-                    diff = self.detector.calculate_difference(current_img)
+                    if not self.detector.has_reference:
+                        # Mode changes reset comparison state. Establish a fresh
+                        # baseline without treating the toggle as a new question.
+                        self.detector.update_reference(current_img)
+                        continue
+                    if self.config.scan_mode == "scroll":
+                        diff = self.detector.calculate_difference(current_img)
+                        change_kind = (
+                            "changed" if diff >= self.detector.threshold else "same"
+                        )
+                    else:
+                        change_kind, diff = self.detector.classify_change(current_img)
+
+                    # Scrolling moves the same question vertically. Follow the
+                    # viewport locally in Next Page mode without another request.
+                    if change_kind == "scroll":
+                        self.detector.update_reference(current_img)
+                        continue
 
                     # If significant change detected, wait brief moment for animation to settle
-                    if diff >= self.detector.threshold:
+                    if change_kind == "changed":
                         time.sleep(self.config.settle_delay_sec)
                         # Re-verify after settling
                         settled_img = capture_screen_region(self.config.scan_region)
