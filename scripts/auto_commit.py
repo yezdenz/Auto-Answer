@@ -72,6 +72,7 @@ FILE_DESCRIPTIONS: Dict[str, str] = {
     "src/auto_answer/ui/hud.py": "Adopt shared answer formatter and improve multi-choice display in floating HUD",
     "src/auto_answer/ui/console.py": "Integrate shared answer formatting into Rich terminal presentation",
     "src/auto_answer/automation/clicker.py": "Simulate mouse clicks on calculated radio button coordinates with safety bounds",
+    "src/auto_answer/references.py": "Safe bounded local PDF reference document extraction and text caching",
 
     # Tests
     "tests/test_capture.py": "Unit tests verifying screen geometry, region capture, and black-frame detection",
@@ -82,6 +83,7 @@ FILE_DESCRIPTIONS: Dict[str, str] = {
     "tests/test_realtime.py": "Unit tests verifying real-time polling state transitions and hotkey hooks",
     "tests/test_security.py": "Unit tests verifying regex secret redaction and credential vault persistence",
     "tests/test_answer_formatting.py": "Unit tests verifying multi-option answer extraction and line formatting",
+    "tests/test_references.py": "Unit tests verifying bounded PDF text parsing and reference context limits",
 }
 
 
