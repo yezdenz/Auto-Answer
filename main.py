@@ -5,14 +5,10 @@ Run directly from PowerShell or Command Prompt.
 
 from __future__ import annotations
 import sys
-import os
 import time
 import argparse
-import warnings
 from pathlib import Path
 from PIL import Image
-
-warnings.filterwarnings("ignore")
 
 # Ensure src is in python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -25,6 +21,7 @@ from auto_answer.ai.solver import GeminiQuestionSolver
 from auto_answer.ui.console import print_banner, display_answer_terminal, console
 from auto_answer.ui.hud import FloatingHUD
 from auto_answer.automation.clicker import AutoClicker
+from auto_answer.security import redact_secrets
 
 
 def ensure_debug_dir(config: AppConfig) -> Path:
@@ -48,11 +45,10 @@ def do_single_scan(config: AppConfig, solver: GeminiQuestionSolver, clicker: Aut
         )
         img = capture_screen_region(region)
 
-        dbg_dir = ensure_debug_dir(config)
-        latest_path = dbg_dir / "latest_capture.png"
-        img.save(latest_path)
-
         if config.save_debug_screenshots:
+            dbg_dir = ensure_debug_dir(config)
+            latest_path = dbg_dir / "latest_capture.png"
+            img.save(latest_path)
             timestamp = int(time.time())
             dbg_path = dbg_dir / f"scan_{timestamp}.png"
             img.save(dbg_path)
@@ -61,7 +57,7 @@ def do_single_scan(config: AppConfig, solver: GeminiQuestionSolver, clicker: Aut
         try:
             result = solver.solve_image(img)
         except Exception as e:
-            console.print(f"[bold red]❌ Error from AI Solver:[/bold red] {e}")
+            console.print(f"[bold red]❌ Error from AI Solver:[/bold red] {redact_secrets(e)}")
             return None
 
     elapsed = time.time() - start_time
@@ -83,10 +79,11 @@ def cmd_snip(args, config: AppConfig):
         # Offer immediate test scan
         console.print("[dim]Taking a test capture of the new region...[/dim]")
         img = capture_screen_region(region)
-        dbg_dir = ensure_debug_dir(config)
-        test_path = dbg_dir / "latest_snip.png"
-        img.save(test_path)
-        console.print(f"[green]Saved preview to {test_path}[/green]")
+        if config.save_debug_screenshots:
+            dbg_dir = ensure_debug_dir(config)
+            test_path = dbg_dir / "latest_snip.png"
+            img.save(test_path)
+            console.print(f"[green]Saved preview to {test_path}[/green]")
 
 
 def cmd_scan(args, config: AppConfig):
@@ -257,7 +254,9 @@ def main():
 
     if not args.command:
         # Default behavior if run without args: real-time live mode
-        cmd_live(argparse.Namespace(hud=False, no_auto_diff=False, demo=False), config)
+        # Safe default: wait for an explicit scan instead of immediately capturing
+        # and uploading the user's screen when the program is opened.
+        cmd_watch(argparse.Namespace(auto=False, demo=False), config)
     elif args.command == "snip":
         cmd_snip(args, config)
     elif args.command == "scan":
