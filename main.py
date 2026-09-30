@@ -133,12 +133,12 @@ def cmd_hud(args, config: AppConfig):
 
     def on_scan():
         if hud:
-            hud.set_status("Scanning & thinking...", "#f9e2af")
+            hud.set_status("> STATUS: ANALYZING QUEST...")
             res = do_single_scan(config, solver, clicker)
             if res:
                 hud.update_result(res)
             else:
-                hud.set_status("Error solving question", "#f38ba8")
+                hud.show_error("Unable to solve the current question")
 
     def on_snip():
         launch_snipping_tool()
