@@ -34,3 +34,4 @@ This roadmap outlines planned enhancements and milestones for **Auto Answer**.
   - Optional integration with local Vision-Language Models (e.g., Florence-2 or Ollama LLaVA/Qwen2-VL) when offline.
 - [ ] **ADB (Android Debug Bridge) Direct Integration**:
   - Send direct touch tap commands (`adb shell input tap x y`) straight to Android emulators for headless, mouse-free clicks.
+
