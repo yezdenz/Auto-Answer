@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Create a report to help us improve Auto Answer
+about: Create a report to help us improve Endependenz
 title: "[BUG] "
 labels: bug
 assignees: ''
