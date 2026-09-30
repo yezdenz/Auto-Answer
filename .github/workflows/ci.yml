@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [ main, master ]
+
+permissions:
+  contents: read
   pull_request:
     branches: [ main, master ]
 
@@ -29,3 +32,9 @@ jobs:
     - name: Run unit tests
       run: |
         python -m unittest discover tests
+
+    - name: Audit dependencies
+      if: matrix.python-version == '3.13'
+      run: |
+        python -m pip install pip-audit
+        python -m pip_audit -r requirements.txt
