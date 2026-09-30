@@ -10,13 +10,14 @@
 
 ## 🌟 Key Features
 
-- **✂ Interactive Visual Snipping Tool**: Click and drag a box directly over your emulator or quiz window to set the scan region with 1 click.
+- **✂ Clear Visual Snipping Tool**: Select a scan region without dimming or tinting the screen; only a blue outline is drawn.
 - **🧠 Direct Multimodal Vision AI**: Uses Google Gemini (`gemini-2.5-flash` or `gemini-3.8-flash`) to analyze questions and options straight from pixels. No brittle OCR errors, handles complex wording, code snippets, and diagrams effortlessly.
 - **🖥️ Beautiful PowerShell Console**: Renders colorized questions, checkmarked options `[✓]`, highlighted answers, confidence scores, and concise explanations directly in your terminal.
 - **🪟 Floating HUD Overlay**: An always-on-top, semi-transparent HUD window you can place right next to your emulator for instant answers without switching windows.
 - **🎮 Emulator Detection**: Detects common Android emulator windows (BlueStacks, LDPlayer, Nox, MuMu) to help coordinate setup.
 - **⚡ Zero Extra Drivers or C++ Compilers**: High-speed Windows GDI BitBlt screen capture implemented natively with ctypes and Pillow.
-- **🛡️ Optional Safe Auto-Clicker**: Supports automated selection of answers with built-in dry-run safety modes.
+- **🛡️ Guarded Auto-Clicker**: Disabled by default, dry-run by default, and blocked for low-confidence, invalid, out-of-range, or multi-select results unless explicitly allowed.
+- **🔒 Privacy-Safe Defaults**: No scan sound, no screenshot retention, and no capture/upload until the user explicitly requests a scan.
 
 ---
 
@@ -62,7 +63,7 @@ py -3 -m pip install -r requirements.txt
 ```
 
 ### 3. Configure Your Gemini API Key
-Create a `.env` file in the project folder (or copy from `.env.example`):
+For development, create a `.env` file in the project folder (or copy from `.env.example`):
 ```powershell
 Copy-Item .env.example .env
 ```
@@ -71,6 +72,8 @@ Open `.env` and add your free Gemini API key:
 GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
 ```
 > 💡 *Don't have an API key? Get one for free at [Google AI Studio](https://aistudio.google.com/app/apikey).*
+
+If no key is configured, the app prompts with masked input and stores the key in the operating system credential vault. This is recommended for distributed builds; `.env` remains a plaintext development option.
 
 ---
 
@@ -135,14 +138,19 @@ The `config.json` file allows fine-tuning application behavior:
   },
   "model": "gemini-2.5-flash",
   "auto_mode_interval_sec": 2.0,
-  "save_debug_screenshots": true,
+  "poll_interval_sec": 0.25,
+  "settle_delay_sec": 0.18,
+  "change_threshold": 4.5,
+  "save_debug_screenshots": false,
   "debug_dir": "debug_output",
-  "hud_opacity": 0.92,
+  "hud_opacity": 0.96,
   "hud_always_on_top": true,
   "clicker": {
     "enabled": false,
     "dry_run": true,
-    "delay_sec": 1.0
+    "delay_sec": 1.0,
+    "min_confidence": 0.9,
+    "allow_multi_select": false
   }
 }
 ```
@@ -153,11 +161,24 @@ The `config.json` file allows fine-tuning application behavior:
 | `scan_region` | Coordinates `(left, top, width, height)` of the screen area to capture. |
 | `model` | Gemini model name (default: `gemini-2.5-flash` or `gemini-3.8-flash`). |
 | `auto_mode_interval_sec` | Pause duration between scans in `--auto` mode. |
-| `save_debug_screenshots` | Saves raw captured images to `debug_output/` for troubleshooting. |
+| `poll_interval_sec` | Real-time change-detection interval; lower values react faster but use more CPU. |
+| `settle_delay_sec` | Brief pause for screen animations before a changed frame is analyzed. |
+| `change_threshold` | Sensitivity of real-time visual change detection. |
+| `save_debug_screenshots` | Opt-in local screenshot retention for troubleshooting. Keep off for privacy. |
 | `hud_opacity` | Window opacity of the floating HUD (0.1 to 1.0). |
 | `hud_always_on_top` | Keeps the HUD window floating above all other windows. |
 | `clicker.enabled` | Whether to automatically click the estimated radio button. |
 | `clicker.dry_run` | Prints simulated click coordinates without moving the mouse. |
+| `clicker.min_confidence` | Minimum model confidence required before automation is permitted. |
+| `clicker.allow_multi_select` | Allows multi-select automation when explicitly enabled. |
+
+## 🔐 Privacy and Safe Use
+
+- A normal launch waits for a command and does not capture the screen automatically.
+- Screenshots are processed in memory unless `save_debug_screenshots` is explicitly enabled.
+- A requested scan sends the selected image region to the configured Google Gemini API over HTTPS. Do not include passwords, personal messages, or unrelated private data in the region.
+- Keep auto-click disabled unless you have tested the selected region and understand the result-confidence limits. The application is intended for authorized study, accessibility, and testing workflows; follow the rules of the system you use it with.
+- Before distributing a build, rotate any development API key, run the test suite and dependency audit, and sign published installers/artifacts.
 
 ---
 
