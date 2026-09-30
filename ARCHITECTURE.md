@@ -1,6 +1,6 @@
-# 🏛️ Architecture Documentation: Auto Answer
+# 🏛️ Architecture Documentation: Endependenz
 
-Auto Answer is engineered as a modular, low-latency screen question detection and solving system. It bridges desktop emulator interfaces with Google Gemini's multimodal vision intelligence to deliver near-instantaneous exam solutions directly within PowerShell or a floating HUD.
+Endependenz is engineered as a modular, low-latency screen question detection and solving system. It bridges desktop emulator interfaces with Google Gemini's multimodal vision intelligence to deliver near-instantaneous exam solutions directly within PowerShell or a floating HUD.
 
 ---
 
@@ -33,7 +33,7 @@ flowchart TD
 
 ### 1. Screen Capture Subsystem (`auto_answer.capture`)
 - **Direct GDI BitBlt (`screen.py`)**:
-  - Instead of invoking heavy screen-capture libraries that require specific C++ runtime compilations or run sluggishly, Auto Answer communicates directly with the Windows Graphics Device Interface (GDI) via standard `ctypes`.
+  - Instead of invoking heavy screen-capture libraries that require specific C++ runtime compilations or run sluggishly, Endependenz communicates directly with the Windows Graphics Device Interface (GDI) via standard `ctypes`.
   - Sets **Per-Monitor DPI Awareness v2** (`SetProcessDpiAwareness(2)`) at process startup to ensure coordinates match physical monitor pixels precisely regardless of Windows display scaling (125%, 150%, 200%).
   - Zero lag: sub-5 millisecond image acquisition from the desktop Device Context.
 - **Interactive Snipping Tool (`snipper.py`)**:
