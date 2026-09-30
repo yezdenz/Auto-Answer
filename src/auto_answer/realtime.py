@@ -64,6 +64,13 @@ class RealtimeScanner:
             region = self.config.scan_region
             img = capture_screen_region(region)
 
+            try:
+                dbg_dir = Path(self.config.debug_dir)
+                dbg_dir.mkdir(parents=True, exist_ok=True)
+                img.save(dbg_dir / "latest_capture.png")
+            except Exception:
+                pass
+
             if self.hud:
                 try:
                     self.hud.root.deiconify()

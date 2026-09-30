@@ -12,7 +12,7 @@ import sys
 import warnings
 from pathlib import Path
 from typing import List, Optional
-from PIL import Image, ImageOps, ImageEnhance
+from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
 # Filter SDK deprecation warnings for cleaner console output
@@ -121,7 +121,7 @@ def prompt_for_api_key() -> Optional[str]:
 class GeminiQuestionSolver:
     """Solves quiz and exam questions using Gemini multimodal API."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-3.5-flash-lite", demo_mode: bool = False):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gemini-3.1-flash-lite", demo_mode: bool = False):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         self.model = model
         self.demo_mode = demo_mode
@@ -146,11 +146,11 @@ class GeminiQuestionSolver:
         return self._client
 
     def preprocess_image(self, image: Image.Image) -> Image.Image:
-        """Optimizes image clarity, contrast, and compression for sub-second upload."""
+        """Optimizes image clarity, contrast, and compression for fast sub-second upload."""
         img = image.convert("RGB")
         w, h = img.size
 
-        # Ideal width for mobile/canvas quiz frames: 550 - 700px
+        # Target width for mobile/canvas quiz frames: ~650px (crisp text, tiny payload)
         if w > 750:
             scale = 750 / w
             img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.BILINEAR)
@@ -219,7 +219,7 @@ class GeminiQuestionSolver:
 
         # Convert PIL image to compact JPEG bytes (slashes upload time by 80%)
         buffer = io.BytesIO()
-        processed_img.save(buffer, format="JPEG", quality=80)
+        processed_img.save(buffer, format="JPEG", quality=75)
         jpeg_bytes = buffer.getvalue()
 
         image_part = types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg")
@@ -232,7 +232,7 @@ class GeminiQuestionSolver:
         )
 
         candidate_models = [self.model]
-        for fallback in ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-flash-latest"]:
+        for fallback in ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"]:
             if fallback not in candidate_models:
                 candidate_models.append(fallback)
 

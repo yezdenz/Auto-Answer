@@ -21,6 +21,15 @@ class TestCapture(unittest.TestCase):
         self.assertEqual(img.size, (100, 80))
         self.assertEqual(img.mode, "RGB")
 
+    def test_is_black_image(self):
+        from PIL import Image
+        from auto_answer.capture.screen import _is_black_image
+        black = Image.new("RGB", (50, 50), (0, 0, 0))
+        self.assertTrue(_is_black_image(black))
+
+        white = Image.new("RGB", (50, 50), (255, 255, 255))
+        self.assertFalse(_is_black_image(white))
+
 
 if __name__ == "__main__":
     unittest.main()

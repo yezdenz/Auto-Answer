@@ -48,8 +48,11 @@ def do_single_scan(config: AppConfig, solver: GeminiQuestionSolver, clicker: Aut
         )
         img = capture_screen_region(region)
 
+        dbg_dir = ensure_debug_dir(config)
+        latest_path = dbg_dir / "latest_capture.png"
+        img.save(latest_path)
+
         if config.save_debug_screenshots:
-            dbg_dir = ensure_debug_dir(config)
             timestamp = int(time.time())
             dbg_path = dbg_dir / f"scan_{timestamp}.png"
             img.save(dbg_path)

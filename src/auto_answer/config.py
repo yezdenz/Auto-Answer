@@ -49,7 +49,7 @@ class ClickerConfig(BaseModel):
 
 class AppConfig(BaseModel):
     scan_region: BoundingBox = Field(default_factory=BoundingBox)
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-3.1-flash-lite"
     gemini_api_key: Optional[str] = None
     auto_mode_interval_sec: float = 2.0
     save_debug_screenshots: bool = True

@@ -1,6 +1,6 @@
 """
 Robust Windows screen capture module.
-Supports 64-bit GDI BitBlt and Pillow ImageGrab with automatic fallback.
+Supports MSS, 64-bit GDI BitBlt (with CAPTUREBLT), and Pillow ImageGrab with automatic fallback.
 DPI-aware, supports multi-monitor setups and emulator capture.
 """
 
@@ -8,8 +8,8 @@ from __future__ import annotations
 import sys
 import os
 from pathlib import Path
-from typing import Tuple
-from PIL import Image
+from typing import Tuple, Union
+from PIL import Image, ImageStat
 from ..config import BoundingBox
 
 # Enable Per-Monitor DPI awareness on Windows to prevent resolution scaling blur / offset
@@ -25,10 +25,29 @@ if sys.platform == "win32":
             pass
 
 
+def ensure_default_desktop() -> bool:
+    """
+    Ensures the current thread is attached to the active user's interactive 'Default' desktop.
+    Required on Windows when running under sandbox, background shells, or isolated desktop threads.
+    """
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            # 0x01FF = MAXIMUM_ALLOWED for Desktop access rights
+            hdesk = user32.OpenDesktopW("Default", 0, False, 0x01FF)
+            if hdesk:
+                return bool(user32.SetThreadDesktop(hdesk))
+        except Exception:
+            pass
+    return True
+
+
 def get_virtual_screen_geometry() -> Tuple[int, int, int, int]:
     """
     Returns (left, top, width, height) of the entire virtual desktop (all monitors).
     """
+    ensure_default_desktop()
     if sys.platform == "win32":
         import ctypes
         user32 = ctypes.windll.user32
@@ -52,8 +71,30 @@ def get_virtual_screen_geometry() -> Tuple[int, int, int, int]:
         return 0, 0, 1920, 1080
 
 
+def _is_black_image(img: Image.Image) -> bool:
+    """Detects if an image is completely black (failed DWM / GDI grab)."""
+    try:
+        stat = ImageStat.Stat(img)
+        # If mean of all channels is near zero (< 0.5), it's an unrendered black buffer
+        return all(m < 0.5 for m in stat.mean[:3])
+    except Exception:
+        return False
+
+
+def _capture_mss(x: int, y: int, w: int, h: int) -> Image.Image:
+    """Captures region using high-speed MSS (C-level Windows graphics capture)."""
+    import mss
+    with mss.MSS() as sct:
+        monitor = {"left": x, "top": y, "width": w, "height": h}
+        sct_img = sct.grab(monitor)
+        img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
+        if _is_black_image(img):
+            raise RuntimeError("MSS captured solid black pixels (unrendered surface)")
+        return img
+
+
 def _capture_gdi(x: int, y: int, w: int, h: int) -> Image.Image:
-    """Captures region using 64-bit safe Windows GDI BitBlt."""
+    """Captures region using 64-bit safe Windows GDI BitBlt with CAPTUREBLT."""
     import ctypes
     from ctypes import wintypes
 
@@ -101,9 +142,13 @@ def _capture_gdi(x: int, y: int, w: int, h: int) -> Image.Image:
     hbitmap = gdi32.CreateCompatibleBitmap(hdesktop_dc, w, h)
     h_old_bmp = gdi32.SelectObject(hmem_dc, hbitmap)
 
-    # SRCCOPY = 0x00CC0020
-    SRCCOPY = 0x00CC0020
-    gdi32.BitBlt(hmem_dc, 0, 0, w, h, hdesktop_dc, x, y, SRCCOPY)
+    # SRCCOPY (0x00CC0020) | CAPTUREBLT (0x40000000) = 0x40CC0020
+    # CAPTUREBLT is mandatory for capturing layered / hardware-accelerated emulator windows
+    ROP_CAPTURE = 0x40CC0020
+    res = gdi32.BitBlt(hmem_dc, 0, 0, w, h, hdesktop_dc, x, y, ROP_CAPTURE)
+    if not res:
+        # Fallback to standard SRCCOPY
+        res = gdi32.BitBlt(hmem_dc, 0, 0, w, h, hdesktop_dc, x, y, 0x00CC0020)
 
     class BITMAPINFOHEADER(ctypes.Structure):
         _fields_ = [
@@ -136,20 +181,28 @@ def _capture_gdi(x: int, y: int, w: int, h: int) -> Image.Image:
     gdi32.DeleteDC(hmem_dc)
     user32.ReleaseDC(hdesktop, hdesktop_dc)
 
-    img = Image.frombuffer("RGBA", (w, h), buf, "raw", "BGRA", 0, 1)
-    return img.convert("RGB")
+    img = Image.frombuffer("RGBA", (w, h), buf, "raw", "BGRA", 0, 1).convert("RGB")
+    if _is_black_image(img):
+        raise RuntimeError("GDI BitBlt captured solid black pixels (unrendered surface)")
+    return img
 
 
 def _capture_imagegrab(x: int, y: int, w: int, h: int) -> Image.Image:
     """Captures region using Pillow ImageGrab."""
     from PIL import ImageGrab
-    return ImageGrab.grab(bbox=(x, y, x + w, y + h)).convert("RGB")
+    img = ImageGrab.grab(bbox=(x, y, x + w, y + h)).convert("RGB")
+    if _is_black_image(img):
+        raise RuntimeError("ImageGrab captured solid black pixels")
+    return img
 
 
-def capture_screen_region(region: BoundingBox | Tuple[int, int, int, int]) -> Image.Image:
+def capture_screen_region(region: Union[BoundingBox, Tuple[int, int, int, int]]) -> Image.Image:
     """
     Captures a specific region of the screen and returns a PIL RGB Image.
-    Uses robust 64-bit GDI BitBlt on Windows, with fallback to ImageGrab.
+    Uses multi-tiered capture with automatic fallback and black-frame detection:
+    1. Fast C-level MSS with interactive desktop attachment.
+    2. 64-bit Windows GDI BitBlt with CAPTUREBLT.
+    3. Pillow ImageGrab.
     """
     if isinstance(region, BoundingBox):
         x, y, w, h = region.left, region.top, region.width, region.height
@@ -161,19 +214,29 @@ def capture_screen_region(region: BoundingBox | Tuple[int, int, int, int]) -> Im
     x = int(x)
     y = int(y)
 
+    ensure_default_desktop()
+
     last_error = None
 
-    # Try method 1: 64-bit Windows GDI BitBlt (sub-millisecond, hardware-direct)
+    # Tier 1: MSS (Fastest ~10ms, multi-monitor, DWM layered window support)
+    try:
+        return _capture_mss(x, y, w, h)
+    except Exception as e:
+        last_error = e
+
+    # Tier 2: 64-bit Windows GDI BitBlt with CAPTUREBLT
     if sys.platform == "win32":
         try:
             return _capture_gdi(x, y, w, h)
         except Exception as e:
             last_error = e
 
-    # Try method 2: Pillow ImageGrab
+    # Tier 3: Pillow ImageGrab
     try:
         return _capture_imagegrab(x, y, w, h)
     except Exception as e:
         last_error = e
 
-    raise RuntimeError(f"All screen capture methods failed for region ({x}, {y}, {w}, {h}): {last_error}")
+    raise RuntimeError(
+        f"All screen capture methods failed or returned black frames for region ({x}, {y}, {w}, {h}): {last_error}"
+    )
