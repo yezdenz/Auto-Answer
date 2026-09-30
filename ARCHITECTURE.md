@@ -108,3 +108,4 @@ flowchart TD
 - **No Hardcoded Secrets**: Secrets and API keys are loaded strictly from `.env` files or system environment variables. The `config.json` saver automatically filters out sensitive credential fields.
 - **Git Protection**: `.gitignore` explicitly excludes `.env`, `debug_output/`, `logs/`, and temporary screenshot artifacts.
 - **Local Execution**: All screen captures remain strictly on the local machine and are sent only to the official Google Gemini API endpoint over TLS.
+
