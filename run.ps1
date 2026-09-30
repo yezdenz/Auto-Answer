@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-    Launcher script for Auto Answer in Windows PowerShell.
+    Launcher script for Endependenz in Windows PowerShell.
 
 .DESCRIPTION
-    Runs the Auto Answer screen scanner and question solver using the Python environment.
+    Runs the Endependenz screen scanner and question solver using the Python environment.
 
 .EXAMPLE
     .\run.ps1
