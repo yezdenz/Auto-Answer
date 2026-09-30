@@ -62,3 +62,4 @@ class GlobalHotkeyListener:
 
             was_pressed = is_down
             time.sleep(0.04)  # ~25Hz polling rate, negligible CPU usage
+
