@@ -6,6 +6,7 @@ __pycache__/
 # Environments & virtualenvs
 .env
 .env.local
+config.json
 .venv/
 env/
 venv/
@@ -15,6 +16,7 @@ ENV/
 dist/
 build/
 *.egg-info/
+release/
 
 # Logs and screenshots
 logs/

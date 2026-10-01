@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [2.0.0] - 2026-10-01
 
 ### Changed
 - Renamed the application to Endependenz and added a paused-by-default control console with Start/Stop, Scroll/Next Page modes, and bounded local PDF references.

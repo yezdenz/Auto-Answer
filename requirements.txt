@@ -1,4 +1,4 @@
-# Auto Answer Dependencies
+# Endependenz runtime dependencies
 google-genai>=2.25.0,<3.0.0
 keyring>=25.0.0,<26.0.0
 mss>=10.0.0,<11.0.0

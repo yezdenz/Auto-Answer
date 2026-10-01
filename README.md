@@ -8,10 +8,25 @@
 
 ---
 
+## Download for Windows
+
+Download `Endependenz-2.0.0-Windows-x64.zip` from [GitHub Releases](https://github.com/yezdenz/Auto-Answer/releases), extract the entire folder, and run `Endependenz.exe`. Python is not required. The application opens paused and does not capture anything until **Start** is pressed.
+
+Each release includes a `.sha256` file. Verify the download in PowerShell:
+
+```powershell
+(Get-FileHash .\Endependenz-2.0.0-Windows-x64.zip -Algorithm SHA256).Hash.ToLower()
+Get-Content .\Endependenz-2.0.0-Windows-x64.zip.sha256
+```
+
+The hashes must match. Release archives also receive GitHub build-provenance attestations. Windows may still show a SmartScreen warning because community builds are not Authenticode-signed.
+
+---
+
 ## 🌟 Key Features
 
 - **✂ Reliable Visual Snipping Tool**: Select a scan region through a light translucent overlay with an outline-only selection. Press Esc or right-click to cancel.
-- **🧠 Direct Multimodal Vision AI**: Uses Google Gemini (`gemini-2.5-flash` or `gemini-3.8-flash`) to analyze questions and options straight from pixels. No brittle OCR errors, handles complex wording, code snippets, and diagrams effortlessly.
+- **🧠 Direct Multimodal Vision AI**: Uses a configurable Google Gemini model to analyze questions and options straight from pixels. No brittle OCR errors, and it can handle complex wording, code snippets, and diagrams.
 - **🖥️ Beautiful PowerShell Console**: Renders colorized questions, checkmarked options `[✓]`, highlighted answers, confidence scores, and concise explanations directly in your terminal.
 - **🪟 Floating HUD Overlay**: An always-on-top, semi-transparent HUD window you can place right next to your emulator for instant answers without switching windows.
 - **🎮 Emulator Detection**: Detects common Android emulator windows (BlueStacks, LDPlayer, Nox, MuMu) to help coordinate setup.
@@ -56,8 +71,8 @@
 
 ### 1. Clone the Repository
 ```powershell
-git clone https://github.com/your-username/Auto-Answer.git
-cd "Auto Answer"
+git clone https://github.com/yezdenz/Auto-Answer.git
+cd Auto-Answer
 ```
 
 ### 2. Install Dependencies
@@ -72,7 +87,7 @@ Copy-Item .env.example .env
 ```
 Open `.env` and add your free Gemini API key:
 ```env
-GEMINI_API_KEY=AIzaSy...your_gemini_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 > 💡 *Don't have an API key? Get one for free at [Google AI Studio](https://aistudio.google.com/app/apikey).*
 
@@ -94,17 +109,18 @@ Launch the interactive snipping tool and drag a rectangle over the question area
 
 You can run in whichever mode best suits your workflow:
 
-#### Option A: Interactive Watch Mode (Recommended)
-Keeps running in your PowerShell window. Whenever a new question appears on screen, press **Enter** to instantly solve it:
+#### Option A: Pixel HUD (Recommended)
+Opens Endependenz paused. Choose a mode and press **Start**:
 ```powershell
 .\run.ps1
-# Or: py main.py watch
+# Or: py main.py
 ```
-- Press **[Enter]**: Scan the region and solve the question
-- Press **[s]**: Re-snip a new area on the fly
-- Press **[q]**: Quit
+- Press **[ START ]**: Begin monitoring and enable F8
+- Press **[ STOP ]**: Pause all monitoring
+- Press **[ SET AREA ]**: Select the question region
+- Press **[ PDF REFERENCE ]**: Add optional study documents
 
-#### Option B: Floating HUD Mode
+#### Option B: Manual HUD Mode
 Launches a sleek floating window that stays on top next to your emulator:
 ```powershell
 .\run.ps1 hud

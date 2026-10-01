@@ -53,12 +53,12 @@ Some Android emulators use hardware-accelerated overlay modes (Vulkan or exclusi
 ### Solution:
 1. Ensure your `.env` file exists in the root folder with:
    ```env
-   GEMINI_API_KEY=AIzaSyYourActualKeyHere
+   GEMINI_API_KEY=your_gemini_api_key_here
    ```
 2. Verify you do not have quotes or trailing spaces around the key.
 3. Alternatively, set it in your current PowerShell session:
    ```powershell
-   $env:GEMINI_API_KEY = "AIzaSyYourActualKeyHere"
+   $env:GEMINI_API_KEY = "your_gemini_api_key_here"
    ```
 4. Test with demo mode if you want to verify the interface without an API key:
    ```powershell

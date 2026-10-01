@@ -5,10 +5,20 @@ Run directly from PowerShell or Command Prompt.
 
 from __future__ import annotations
 import sys
+import os
 import time
 import argparse
 from pathlib import Path
 from PIL import Image
+
+APP_ROOT = (
+    Path(sys.executable).resolve().parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parent
+)
+RESOURCE_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+if getattr(sys, "frozen", False):
+    os.chdir(APP_ROOT)
 
 # Ensure src is in python path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -250,10 +260,6 @@ def _run_controlled_hud(args, config: AppConfig, auto_detect_changes: bool):
 def cmd_live(args, config: AppConfig):
     """Launch autonomous real-time screen scanner."""
     from auto_answer.realtime import RealtimeScanner
-    import threading
-
-    solver = GeminiQuestionSolver(api_key=config.gemini_api_key, model=config.model, demo_mode=getattr(args, "demo", False))
-    clicker = AutoClicker(config.clicker)
 
     if getattr(args, "hud", False):
         _run_controlled_hud(
@@ -262,29 +268,20 @@ def cmd_live(args, config: AppConfig):
             auto_detect_changes=not getattr(args, "no_auto_diff", False),
         )
         return
-        def on_snip():
-            launch_snipping_tool()
-            cfg = AppConfig.load()
-            config.scan_region = cfg.scan_region
 
-        hud = FloatingHUD(config, on_snip_requested=on_snip)
-        scanner = RealtimeScanner(config, solver, clicker, hud=hud)
-        hud.on_scan = lambda: scanner.trigger_scan(reason="HUD Button")
-        t = threading.Thread(
-            target=lambda: scanner.start(auto_detect_changes=not getattr(args, "no_auto_diff", False)),
-            daemon=True
-        )
-        t.start()
-        console.print("[bold green]✓ Real-Time Engine + Floating HUD started![/bold green]")
-        hud.run()
-    else:
-        scanner = RealtimeScanner(config, solver, clicker)
-        scanner.start(auto_detect_changes=not getattr(args, "no_auto_diff", False))
+    solver = GeminiQuestionSolver(
+        api_key=config.gemini_api_key,
+        model=config.model,
+        demo_mode=getattr(args, "demo", False),
+    )
+    clicker = AutoClicker(config.clicker)
+    scanner = RealtimeScanner(config, solver, clicker)
+    scanner.start(auto_detect_changes=not getattr(args, "no_auto_diff", False))
 
 
 def cmd_test_sample(args, config: AppConfig):
     """Test the AI solver using the provided sample question image."""
-    sample_path = Path("assets/samples/sample_question.png")
+    sample_path = RESOURCE_ROOT / "assets/samples/sample_question.png"
     if not sample_path.exists():
         console.print(f"[bold red]❌ Sample image not found at {sample_path}[/bold red]")
         return
@@ -355,10 +352,8 @@ def main():
     args = parser.parse_args()
 
     if not args.command:
-        # Default behavior if run without args: real-time live mode
-        # Safe default: wait for an explicit scan instead of immediately capturing
-        # and uploading the user's screen when the program is opened.
-        cmd_watch(argparse.Namespace(auto=False, demo=False), config)
+        # Double-click/default launch opens the HUD, still paused until Start.
+        cmd_live(argparse.Namespace(hud=True, no_auto_diff=False, demo=False), config)
     elif args.command == "snip":
         cmd_snip(args, config)
     elif args.command == "scan":
