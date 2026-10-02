@@ -47,6 +47,7 @@ class FloatingHUD:
         self._closed = False
         self._scan_busy = False
         self._running = False
+        self._last_result: Optional[AnswerResult] = None
         self._mode = config.scan_mode
 
         self.root = tk.Tk()
@@ -63,6 +64,7 @@ class FloatingHUD:
         self._drag_start_y = 0
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._close)
+        self.root.bind("<Escape>", lambda event: self._request_stop())
         self.root.after(40, self._drain_ui_events)
 
     def _pixel_button(self, parent, text, command, primary: bool = False):
@@ -175,7 +177,7 @@ class FloatingHUD:
         run_bar.pack(fill="x", side="bottom")
         self.start_btn = self._pixel_button(run_bar, "[ START ]", self._request_start, primary=True)
         self.start_btn.pack(side="left", padx=4)
-        self.stop_btn = self._pixel_button(run_bar, "[ STOP ]", self._request_stop)
+        self.stop_btn = self._pixel_button(run_bar, "[ STOP / ESC ]", self._request_stop)
         self.stop_btn.pack(side="left", padx=4)
         self.stop_btn.configure(state="disabled")
         self.run_state_lbl = tk.Label(
@@ -229,7 +231,11 @@ class FloatingHUD:
                 fg=GREEN if running else MUTED,
             )
         if not running:
-            self.answer_text_lbl.configure(text="SYSTEM PAUSED\nPRESS [ START ] TO MONITOR")
+            if self._last_result is not None:
+                self._apply_result(self._last_result)
+            else:
+                self.status_lbl.configure(text="> STATUS: PAUSED", fg=MUTED)
+                self.answer_text_lbl.configure(text="SYSTEM PAUSED\nPRESS [ START ] TO MONITOR")
 
     def _select_mode(self, mode: str):
         if mode == self._mode:
@@ -379,6 +385,7 @@ class FloatingHUD:
             self.explanation_lbl.configure(text="")
             return
         pct = int(result.confidence * 100)
+        self._last_result = result
         state_label = "QUEST COMPLETE" if self._running else "PAUSED // LAST RESULT"
         status = f"> STATUS: {state_label} // {pct}% CONFIDENCE"
         if result.is_negative_question:
