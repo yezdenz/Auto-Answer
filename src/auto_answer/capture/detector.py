@@ -89,6 +89,8 @@ class ScreenChangeDetector:
             if score < best_aligned:
                 best_aligned = score
                 best_shift = shift
+                if score == 0.0:
+                    break  # No remaining offset can improve a perfect match.
 
         if best_shift and best_aligned <= self.scroll_match_threshold:
             return "scroll", best_aligned
