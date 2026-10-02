@@ -44,6 +44,7 @@ class RealtimeScanner:
         self.detector = ScreenChangeDetector(threshold=threshold)
         self.is_running = False
         self._solve_lock = threading.Lock()
+        self._stop_event = threading.Event()
         self._hotkey_listener: Optional[GlobalHotkeyListener] = None
 
     @property
@@ -109,9 +110,16 @@ class RealtimeScanner:
         self.config.scan_mode = mode
         self.detector.reset()
 
+    def _classify_frame(self, image: Image.Image) -> tuple[str, float]:
+        if self.config.scan_mode == "scroll":
+            diff = self.detector.calculate_difference(image)
+            return ("changed" if diff >= self.detector.threshold else "same"), diff
+        return self.detector.classify_change(image)
+
     def start(self, auto_detect_changes: bool = True):
         """Starts real-time monitoring loop."""
         self.is_running = True
+        self._stop_event.clear()
         self.detector.reset()
 
         # Initialize global hotkey listener (F8)
@@ -143,7 +151,8 @@ class RealtimeScanner:
 
         try:
             while self.is_running:
-                time.sleep(self.poll_interval)
+                if self._stop_event.wait(self.poll_interval):
+                    break
 
                 if self.is_solving:
                     continue
@@ -155,13 +164,7 @@ class RealtimeScanner:
                         # baseline without treating the toggle as a new question.
                         self.detector.update_reference(current_img)
                         continue
-                    if self.config.scan_mode == "scroll":
-                        diff = self.detector.calculate_difference(current_img)
-                        change_kind = (
-                            "changed" if diff >= self.detector.threshold else "same"
-                        )
-                    else:
-                        change_kind, diff = self.detector.classify_change(current_img)
+                    change_kind, diff = self._classify_frame(current_img)
 
                     # Scrolling moves the same question vertically. Follow the
                     # viewport locally in Next Page mode without another request.
@@ -171,9 +174,16 @@ class RealtimeScanner:
 
                     # If significant change detected, wait brief moment for animation to settle
                     if change_kind == "changed":
-                        time.sleep(self.config.settle_delay_sec)
+                        if self._stop_event.wait(self.config.settle_delay_sec):
+                            break
                         # Re-verify after settling
                         settled_img = capture_screen_region(self.config.scan_region)
+                        change_kind, diff = self._classify_frame(settled_img)
+                        if change_kind == "scroll":
+                            self.detector.update_reference(settled_img)
+                            continue
+                        if change_kind == "same" or self._stop_event.is_set():
+                            continue
                         self.trigger_scan(
                             reason=f"Auto Scene Change (diff: {diff:.1f})",
                             captured_image=settled_img,
@@ -187,6 +197,7 @@ class RealtimeScanner:
     def stop(self):
         """Stops the real-time scanner."""
         self.is_running = False
+        self._stop_event.set()
         if self._hotkey_listener:
             self._hotkey_listener.stop()
             self._hotkey_listener = None
